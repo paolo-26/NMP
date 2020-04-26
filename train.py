@@ -9,7 +9,7 @@ import model as mod
 import dataset
 from dataset import plot_piano_roll
 
-FS = 20
+FS = 4  # Sampling frequency
 
 
 def main():
@@ -22,16 +22,18 @@ def main():
 
     # Load midi files.
     midi_list = [x for x in os.listdir("./data/") if x.endswith('.mid')]
-    epochs = 7
-    train_list = midi_list[0:20]
-    validation_list = midi_list[20:25]
-    test_list = midi_list[51:52]
+    epochs = 5
+    train_list = midi_list[0:25]
+    validation_list = midi_list[25:35]
+    test_list = midi_list[50:51]
     print("Train list:  ", train_list)
     print("Validation list:  ", validation_list)
     print("Test list:  ", test_list)
-    train = dataset.DataGeneratorFile(train_list, fs=FS)
-    validation = dataset.DataGeneratorFile(validation_list, fs=FS)
-    test = dataset.DataGeneratorFile(test_list, fs=FS)
+
+    # Create generators.
+    train = dataset.DataGenerator(train_list, fs=FS)
+    validation = dataset.DataGenerator(validation_list, fs=FS)
+    test = dataset.DataGenerator(test_list, fs=FS)
 
     # Fit the model.
     model.fit(train.generate(), epochs=epochs, steps_per_epoch=train.dim,
@@ -41,7 +43,7 @@ def main():
 
     # Evaluate the model.
     print("Evaluation on test set:")
-    _, prec, rec = model.evaluate(test.generate(), steps=test.dim)
+    _, prec, rec, f1 = model.evaluate(test.generate(), steps=test.dim)
 
     # Make predictions.
     predictions = model.predict(test.generate(), steps=test.dim)

@@ -27,7 +27,7 @@ def plot_piano_roll(pr, start_pitch, end_pitch, ax, fs=100):
                              ax=ax)
 
 
-class DataGeneratorFile:
+class DataGenerator:
     """Class to yield midi_file as batches."""
 
     def __init__(self, midi_list, fs=4, quant=0):
@@ -67,7 +67,7 @@ class DataGeneratorFile:
                 break
 
 
-class DataGenerator:
+class DataGeneratorOld:
     """Alternative generator which yields batches of equal size."""
 
     def __init__(self):
