@@ -47,7 +47,7 @@ class DataGenerator:
 
         return obj
 
-    def generate(self, limit=None):
+    def generate(self, step=1, limit=None):
         """Yield the entire dataset infinite times.
 
         Target and data differ by one timestep.
@@ -56,11 +56,21 @@ class DataGenerator:
         while True:
             for m in self.midi_list:
                 midi_object = pm.PrettyMIDI("./data/" + m)
+
                 if self.quant:
                     midi_object = self.quantize(midi_object)
+
                 data = transpose(midi_object.get_piano_roll(self.fs))
-                target = data[1:, :]
+                target = data[step:, :]
                 data = data[:-1, :]
+                data_new = []
+
+                for c in range(len(data)-step+1):
+                    data_new.append(np.array(data[c:c+step]))
+
+                if step != 1:
+                    data = np.array(data_new)
+
                 yield ((data, target))
 
             if limit == 1:

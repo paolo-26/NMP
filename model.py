@@ -11,9 +11,9 @@ import keras.backend as K
 def build_model():
     """Create Keras model."""
     model = Sequential()
-    model.add(Dense(80))
+    model.add(SimpleRNN(units=128))
     model.add(Dense(60))
-    # model.add(SimpleRNN(64))
+    model.add(Dense(80))
     model.add(Dense(128, activation='softmax'))
 
     model.compile(loss='binary_crossentropy',
