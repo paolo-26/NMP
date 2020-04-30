@@ -8,7 +8,9 @@ import os
 import model as mod
 import dataset
 from dataset import plot_piano_roll
+from pathlib import Path
 
+P = Path(__file__).parent.absolute()
 FS = 10  # Sampling frequency
 
 
@@ -17,11 +19,11 @@ def main():
     # Build Keras model.
     model = mod.build_model()
     now = datetime.now()
-    logger = TensorBoard(log_dir='logs/' + now.strftime("%Y%m%d-%H%M%S") +
-                         "/", write_graph=True, update_freq='epoch')
+    logger = TensorBoard(log_dir=P / 'logs' / now.strftime("%Y%m%d-%H%M%S"),
+                         write_graph=True, update_freq='epoch')
 
     # Load midi files.
-    midi_list = [x for x in os.listdir("./data/") if x.endswith('.mid')]
+    midi_list = [x for x in os.listdir(P / "data") if x.endswith('.mid')]
     epochs = 5
     st = 2
     train_list = midi_list[0:25]
@@ -32,9 +34,9 @@ def main():
     print("Test list:  ", test_list)
 
     # Create generators.
-    train = dataset.DataGenerator(train_list, fs=FS)
-    validation = dataset.DataGenerator(validation_list, fs=FS)
-    test = dataset.DataGenerator(test_list, fs=FS)
+    train = dataset.DataGenerator(train_list, P / "data",  fs=FS)
+    validation = dataset.DataGenerator(validation_list, P / "data",  fs=FS)
+    test = dataset.DataGenerator(test_list, P / "data",  fs=FS)
 
     # Fit the model.
     model.fit(train.generate(step=st), epochs=epochs,

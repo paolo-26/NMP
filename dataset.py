@@ -30,12 +30,13 @@ def plot_piano_roll(pr, start_pitch, end_pitch, ax, fs=100):
 class DataGenerator:
     """Class to yield midi_file as batches."""
 
-    def __init__(self, midi_list, fs=4, quant=0):
+    def __init__(self, midi_list, path, fs=4, quant=0):
         """Initialise list."""
         self.midi_list = midi_list
         self.dim = len(midi_list)
         self.fs = fs
         self.quant = quant
+        self.path = path
 
     def quantize(self, obj):
         """Quantize time axis."""
@@ -55,7 +56,7 @@ class DataGenerator:
         """
         while True:
             for m in self.midi_list:
-                midi_object = pm.PrettyMIDI("./data/" + m)
+                midi_object = pm.PrettyMIDI(str(self.path / m))
 
                 if self.quant:
                     midi_object = self.quantize(midi_object)
