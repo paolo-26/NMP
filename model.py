@@ -13,7 +13,6 @@ def build_model():
     model = Sequential()
     model.add(SimpleRNN(units=128))
     model.add(Dense(60))
-    model.add(Dense(80))
     model.add(Dense(128, activation='softmax'))
 
     model.compile(loss='binary_crossentropy',

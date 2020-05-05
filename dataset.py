@@ -69,8 +69,7 @@ class DataGenerator:
                 for c in range(len(data)-step+1):
                     data_new.append(np.array(data[c:c+step]))
 
-                if step != 1:
-                    data = np.array(data_new)
+                data = np.array(data_new)
 
                 yield ((data, target))
 
