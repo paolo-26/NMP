@@ -19,6 +19,12 @@ def binarize(data):
     return data
 
 
+def convert(data):
+    """Convert data from sigmoid output to 0-1."""
+    data = np.array([[1 if e > 0.5 else 0 for e in r] for r in data])
+    return data
+
+
 def plot_piano_roll(pr, start_pitch, end_pitch, ax, fs=100):
     """Plot piano roll representation."""
     librosa.display.specshow(pr[start_pitch:end_pitch], hop_length=1, sr=fs,
@@ -30,13 +36,20 @@ def plot_piano_roll(pr, start_pitch, end_pitch, ax, fs=100):
 class DataGenerator:
     """Class to yield midi_file as batches."""
 
-    def __init__(self, midi_list, path, fs=4, quant=0):
+    def __init__(self, midi_list, path, fs=4, quant=0, binarize=1):
         """Initialise list."""
         self.midi_list = midi_list
         self.dim = len(midi_list)
         self.fs = fs
         self.quant = quant
+        self.binar = binarize
         self.path = path
+
+    def binarize(self, pr):
+        """Binarize data."""
+        pr = np.array([[np.float32(1) if e else np.float32(0) for e in r]
+                       for r in pr])
+        return pr
 
     def quantize(self, obj):
         """Quantize time axis."""
@@ -48,11 +61,14 @@ class DataGenerator:
 
         return obj
 
-    def generate(self, step=1, limit=None):
+    def generate(self, step=1, t_step=1, limit=None):
         """Yield the entire dataset infinite times.
 
         Target and data differ by one timestep.
         If limit==1: stop generator after 1 epoch.
+
+        step: number of timesteps used for prediction
+        t_step: number of timesteps to be predicted
         """
         while True:
             for m in self.midi_list:
@@ -61,16 +77,47 @@ class DataGenerator:
                 if self.quant:
                     midi_object = self.quantize(midi_object)
 
-                data = transpose(midi_object.get_piano_roll(self.fs))
+                pr = midi_object.get_piano_roll(self.fs)
+                data = transpose(pr[21:109, :])
+
+                if self.binar:
+                    data = self.binarize(data)
+
                 target = data[step:, :]
-                data = data[:-1, :]
-                data_new = []
+                data = data[:-t_step, :]
 
-                for c in range(len(data)-step+1):
-                    data_new.append(np.array(data[c:c+step]))
+                if step > 1:
+                    data_new = []
+                    for c in range(len(data)-step+1):
+                        conc = [data[x] for x in range(c, c+step)]
+                        data_new.append(np.concatenate(conc, axis=None))
 
-                data = np.array(data_new)
+                    data = np.array(data_new)
 
+                if t_step > 1:
+                    target_new = []
+                    for c in range(len(target)-step+1):
+                        conc = [target[x] for x in range(c, c+step)]
+                        target_new.append(np.concatenate(conc, axis=None))
+
+                    target = np.array(target_new)
+
+                # if step > 1:
+                #     data_new = []
+                #     for c in range(len(data)-step+1):
+                #         data_new.append(np.array(data[c:c+step]))
+
+                #     data = np.array(data_new)
+
+                # if step > 1:
+                #     target_new = []
+                #     for c in range(len(target)-step+1):
+                #         target_new.append(np.array(target[c:c+step]))
+
+                #     target = np.array(target_new)
+                # self.big_matrix.append((data, target))
+                # print("D: ", data.shape)
+                # print("T: ", target.shape)
                 yield ((data, target))
 
             if limit == 1:

@@ -26,7 +26,23 @@ def load_file(filename):
 
 def main():
     """Plot training and validation data."""
-    name = '20200515-164008'
+    name = '20200515-170055'
+    data = load_file(name)
+    print(data)
+    metrics = ['F1 score', 'Loss', 'Precision', 'Recall']
+    for m, metric in enumerate(['f1', 'loss', 'precision_1', 'recall_1']):
+        plt.figure()
+        plt.plot(smooth(data[metric]), '-^', markersize=5.5, label='Training')
+        plt.plot(smooth(data['val_' + metric]), '-s', markersize=4.5,
+                 label='Validation')
+        plt.title(metrics[m])
+        plt.ylabel(metrics[m])
+        plt.xlabel('Epoch')
+        plt.grid(which='both')
+        plt.xticks(data["epoch"])
+        plt.legend()
+    plt.show()
+
     # labels = ['Training', 'Validation']
     # metrics = ['F1 score', 'Loss', 'Precision', 'Recall']
     # for m, metric in enumerate(['f1', 'loss']):
@@ -45,21 +61,6 @@ def main():
     #     plt.xticks(data["Step"])
     #     plt.legend()
     # plt.show()
-    data = load_file(name)
-    print(data)
-    metrics = ['F1 score', 'Loss', 'Precision', 'Recall']
-    for m, metric in enumerate(['f1', 'loss', 'precision_1', 'recall_1']):
-        plt.figure()
-        plt.plot(smooth(data[metric]), '-^', markersize=5.5, label='Training')
-        plt.plot(smooth(data['val_' + metric]), '-s', markersize=4.5,
-                 label='Validation')
-        plt.title(metrics[m])
-        plt.ylabel(metrics[m])
-        plt.xlabel('Epoch')
-        plt.grid(which='both')
-        plt.xticks(data["epoch"])
-        plt.legend()
-    plt.show()
 
 
 if __name__ == '__main__':
