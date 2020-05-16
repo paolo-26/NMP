@@ -13,15 +13,13 @@ import keras.backend as K
 def build_model(inp_shape, num_ts):
     """Create Keras model."""
     model = Sequential()
-    # model.add(Flatten())
-    model.add(Dense(90, input_shape=(inp_shape,),  activation='relu'))
-    model.add(Dense(80, activation='relu'))
-    model.add(Dense(88*num_ts, activation='sigmoid', name='Output'))
+    model.add(Dense(128, input_shape=(inp_shape,),  activation='relu'))
+    model.add(Dense(88, activation='sigmoid', name='Output'))
 
-    opt = tf.keras.optimizers.SGD(learning_rate=0.3)
+    # opt = tf.keras.optimizers.SGD(learning_rate=0.1)
 
     model.compile(loss='binary_crossentropy',
-                  optimizer='adam', # opt,
+                  optimizeri='adam',  # 'rmsprop', # opt,
                   metrics=[keras.metrics.Precision(),
                            keras.metrics.Recall(),
                            f1])

@@ -26,22 +26,29 @@ def load_file(filename):
 
 def main():
     """Plot training and validation data."""
-    name = '20200515-170055'
+
+    name = '20200516-131302'  # 20 min Adam 1-1
+    # name = '20200516-115508'  # 10 epochs SGD 1-1
     data = load_file(name)
     print(data)
     metrics = ['F1 score', 'Loss', 'Precision', 'Recall']
     for m, metric in enumerate(['f1', 'loss', 'precision_1', 'recall_1']):
-        plt.figure()
-        plt.plot(smooth(data[metric]), '-^', markersize=5.5, label='Training')
-        plt.plot(smooth(data['val_' + metric]), '-s', markersize=4.5,
+        plt.figure(constrained_layout=True, figsize=(6, 4))
+        plt.plot(smooth(data[metric]), '-', markersize=5.5, label='Training')
+        plt.plot(smooth(data['val_' + metric]), 'o', markersize=5,
                  label='Validation')
-        plt.title(metrics[m])
-        plt.ylabel(metrics[m])
-        plt.xlabel('Epoch')
-        plt.grid(which='both')
-        plt.xticks(data["epoch"])
-        plt.legend()
-    plt.show()
+        plt.title(metrics[m], fontsize='x-large')
+        plt.ylabel(metrics[m], fontsize='x-large')
+        plt.xlabel('Epoch', fontsize='x-large')
+        # plt.grid(which='both')
+        plt.xticks([0, 5, 10, 15, 20])
+        # plt.xticks(data["epoch"])
+        plt.legend(fontsize='x-large')
+        ax = plt.gca()
+        ax.tick_params(labelsize='x-large')
+        plt.savefig(P / 'plots' / (name + '-' + metric + '.eps'),
+                    format='eps')
+    # plt.show()
 
     # labels = ['Training', 'Validation']
     # metrics = ['F1 score', 'Loss', 'Precision', 'Recall']
