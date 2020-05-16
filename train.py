@@ -18,7 +18,7 @@ def main():
     """Run main script."""
     # Load midi files.
     midi_list = [x for x in os.listdir(P / "data") if x.endswith('.mid')]
-    epochs = 10
+    epochs = 20
     st = 1
     num_ts = 1
 
@@ -28,9 +28,9 @@ def main():
     # test_list = midi_list[232:233]
 
     # Small dataset
-    train_list = midi_list[0:30]
-    validation_list = midi_list[30:36]
-    test_list = midi_list[36:37]  # 45]
+    train_list = midi_list[0:25]
+    validation_list = midi_list[25:32]
+    test_list = midi_list[40:43]
     print("Train list:  ", train_list)
     print("Validation list:  ", validation_list)
     print("Test list:  ", test_list)
@@ -60,11 +60,10 @@ def main():
     print("Evaluation on test set:")
     _, prec, rec, f1 = model.evaluate(test.generate(step=st), steps=test.dim)
 
-    # Make predictions.
-    predictions = model.predict(test.generate(step=st), steps=test.dim)
-    predictions = dataset.transpose(predictions)
-    predictions = dataset.convert(predictions)
     for c, t in enumerate(list(test.generate(step=st, limit=1))):
+        predictions = model.predict(t)
+        predictions = dataset.transpose(predictions)
+        predictions = dataset.convert(predictions)
         test = t[0]
         # test = test[:, 0, :]
         fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(20, 8))
@@ -75,7 +74,7 @@ def main():
         ax2.set_title('Predictions ' + str(c))
         # plt.show()
 
-    # plt.show()
+    plt.show()
 
 
 if __name__ == '__main__':

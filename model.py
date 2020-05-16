@@ -16,10 +16,10 @@ def build_model(inp_shape, num_ts):
     model.add(Dense(128, input_shape=(inp_shape,),  activation='relu'))
     model.add(Dense(88, activation='sigmoid', name='Output'))
 
-    # opt = tf.keras.optimizers.SGD(learning_rate=0.1)
+    opt = tf.keras.optimizers.SGD(learning_rate=0.1)
 
     model.compile(loss='binary_crossentropy',
-                  optimizeri='adam',  # 'rmsprop', # opt,
+                  optimizer='adam',
                   metrics=[keras.metrics.Precision(),
                            keras.metrics.Recall(),
                            f1])
