@@ -11,14 +11,14 @@ from dataset import plot_piano_roll
 from pathlib import Path
 
 P = Path(__file__).parent.absolute()
-FS = 100  # Sampling frequency
+FS = 4  # Sampling frequency
 
 
 def main():
     """Run main script."""
     # Load midi files.
     midi_list = [x for x in os.listdir(P / "data") if x.endswith('.mid')]
-    epochs = 20
+    epochs = 15
     st = 1
     num_ts = 1
 
@@ -28,9 +28,9 @@ def main():
     # test_list = midi_list[232:233]
 
     # Small dataset
-    train_list = midi_list[0:25]
-    validation_list = midi_list[25:32]
-    test_list = midi_list[40:43]
+    train_list = midi_list[0:5]
+    validation_list = midi_list[26:30]
+    test_list = midi_list[40:41]
     print("Train list:  ", train_list)
     print("Validation list:  ", validation_list)
     print("Test list:  ", test_list)
@@ -44,23 +44,28 @@ def main():
     csv_logger = CSVLogger(P / 'logs' / now.strftime("%Y%m%d-%H%M%S") /
                            'log.csv',
                            separator=',', append=False)
+
     # Create generators.
     train = dataset.DataGenerator(train_list, P / "data",  fs=FS)
     validation = dataset.DataGenerator(validation_list, P / "data",  fs=FS)
     test = dataset.DataGenerator(test_list, P / "data",  fs=FS)
+    train.build_dataset("training", step=st)
+    validation.build_dataset("validation", step=st)
+    test.build_dataset("test", step=st)
 
     # Fit the model.
-    model.fit(train.generate(step=st), epochs=epochs,
-              steps_per_epoch=train.dim,  shuffle=True,
-              validation_data=validation.generate(step=st),
-              validation_steps=validation.dim,
+    model.fit(train.generate(limit=epochs), epochs=epochs,
+              steps_per_epoch=1,  # shuffle=True,
+              validation_data=validation.generate(limit=epochs),
+              validation_steps=1,
               callbacks=[logger, csv_logger])
 
     # Evaluate the model.
     print("Evaluation on test set:")
-    _, prec, rec, f1 = model.evaluate(test.generate(step=st), steps=test.dim)
+    _, prec, rec, f1 = model.evaluate(test.generate(limit=epochs),
+                                      steps=test.dime)
 
-    for c, t in enumerate(list(test.generate(step=st, limit=1))):
+    for c, t in enumerate(list(test.generate(limit=1))):
         predictions = model.predict(t)
         predictions = dataset.transpose(predictions)
         predictions = dataset.convert(predictions)

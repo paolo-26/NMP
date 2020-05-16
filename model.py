@@ -12,11 +12,13 @@ import keras.backend as K
 
 def build_model(inp_shape, num_ts):
     """Create Keras model."""
+    physical_devices = tf.config.list_physical_devices('GPU')
+    tf.config.experimental.set_memory_growth(physical_devices[0], True)
     model = Sequential()
     model.add(Dense(128, input_shape=(inp_shape,),  activation='relu'))
     model.add(Dense(88, activation='sigmoid', name='Output'))
 
-    opt = tf.keras.optimizers.SGD(learning_rate=0.1)
+    # opt = tf.keras.optimizers.SGD(learning_rate=0.1)
 
     model.compile(loss='binary_crossentropy',
                   optimizer='adam',

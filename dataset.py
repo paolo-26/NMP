@@ -5,6 +5,8 @@ import pandas as pd
 import numpy as np
 import librosa.display
 import pretty_midi as pm
+import time
+import copy
 
 
 def transpose(data):
@@ -61,7 +63,63 @@ class DataGenerator:
 
         return obj
 
-    def generate(self, step=1, t_step=1, limit=None):
+    def generate(self, limit=None):
+        """Yield a dataset."""
+        print("Yielding dataset %s times" % limit)
+        for e in range(limit):
+            yield self.dataset
+
+    def build_dataset(self, name, step=1, t_step=1):
+        """Build a dataset."""
+        print("Building %s dataset (%d files)" % (name, len(self.midi_list)))
+        flag = 0
+        for m in self.midi_list:
+            midi_object = pm.PrettyMIDI(str(self.path / m))
+
+            if self.quant:
+                midi_object = self.quantize(midi_object)
+
+            pr = midi_object.get_piano_roll(self.fs)
+            prt = transpose(pr[21:109, :])
+
+            if self.binar:
+                prt = self.binarize(prt)
+
+            if flag == 0:
+                target = prt[step:, :]
+                data = prt[:-t_step, :]
+                flag = 1
+
+            else:
+                target2 = prt[step:, :]
+                data2 = prt[:-t_step, :]
+
+                b = np.concatenate((target, target2), axis=0)
+                a = np.concatenate((data, data2), axis=0)
+
+                data = copy.copy(a)
+                target = copy.copy(b)
+
+            if step > 1:
+                data_new = []
+                for c in range(len(data)-step+1):
+                    conc = [data[x] for x in range(c, c+step)]
+                    data_new.append(np.concatenate(conc, axis=None))
+
+                data = np.array(data_new)
+
+            if t_step > 1:
+                target_new = []
+                for c in range(len(target)-step+1):
+                    conc = [target[x] for x in range(c, c+step)]
+                    target_new.append(np.concatenate(conc, axis=None))
+
+                target = np.array(target_new)
+
+        self.dataset = ((data, target))
+        self.dime = len(data)
+
+    def generate2(self, step=1, t_step=1, limit=None):
         """Yield the entire dataset infinite times.
 
         Target and data differ by one timestep.
@@ -71,6 +129,8 @@ class DataGenerator:
         t_step: number of timesteps to be predicted
         """
         while True:
+            flag = 0
+            print("Building dataset (%d files)" % len(self.midi_list))
             for m in self.midi_list:
                 midi_object = pm.PrettyMIDI(str(self.path / m))
 
@@ -78,13 +138,23 @@ class DataGenerator:
                     midi_object = self.quantize(midi_object)
 
                 pr = midi_object.get_piano_roll(self.fs)
-                data = transpose(pr[21:109, :])
+                prt = transpose(pr[21:109, :])
 
                 if self.binar:
-                    data = self.binarize(data)
+                    prt = self.binarize(prt)
 
-                target = data[step:, :]
-                data = data[:-t_step, :]
+                if flag == 0:
+                    target = prt[step:, :]
+                    data = prt[:-t_step, :]
+                    flag = 1
+
+                else:
+                    target2 = prt[step:, :]
+                    data2 = prt[:-t_step, :]
+                    b = np.concatenate((target, target2), axis=0)
+                    a = np.concatenate((data, data2), axis=0)
+                    data = copy.copy(a)
+                    target = copy.copy(b)
 
                 if step > 1:
                     data_new = []
@@ -118,7 +188,11 @@ class DataGenerator:
                 # self.big_matrix.append((data, target))
                 # print("D: ", data.shape)
                 # print("T: ", target.shape)
-                yield ((data, target))
+
+            # print("Data shape : ", data.shape)
+            # print("Target shape: ", target.shape)
+            # time.sleep(50)
+            yield ((data, target))
 
             if limit == 1:
                 break
