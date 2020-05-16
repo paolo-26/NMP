@@ -11,14 +11,14 @@ from dataset import plot_piano_roll
 from pathlib import Path
 
 P = Path(__file__).parent.absolute()
-FS = 4  # Sampling frequency
+FS = 100  # Sampling frequency
 
 
 def main():
     """Run main script."""
     # Load midi files.
     midi_list = [x for x in os.listdir(P / "data") if x.endswith('.mid')]
-    epochs = 15
+    epochs = 50
     st = 1
     num_ts = 1
 
@@ -28,9 +28,9 @@ def main():
     # test_list = midi_list[232:233]
 
     # Small dataset
-    train_list = midi_list[0:5]
-    validation_list = midi_list[26:30]
-    test_list = midi_list[40:41]
+    train_list = midi_list[0:30]
+    validation_list = midi_list[30:36]
+    test_list = midi_list[40:43]
     print("Train list:  ", train_list)
     print("Validation list:  ", validation_list)
     print("Test list:  ", test_list)
@@ -49,36 +49,38 @@ def main():
     train = dataset.DataGenerator(train_list, P / "data",  fs=FS)
     validation = dataset.DataGenerator(validation_list, P / "data",  fs=FS)
     test = dataset.DataGenerator(test_list, P / "data",  fs=FS)
-    train.build_dataset("training", step=st)
-    validation.build_dataset("validation", step=st)
-    test.build_dataset("test", step=st)
+    train.build_dataset("training", step=st, t_step=num_ts)
+    validation.build_dataset("validation", step=st, t_step=num_ts)
+    test.build_dataset("test", step=st, t_step=num_ts)
 
     # Fit the model.
-    model.fit(train.generate(limit=epochs), epochs=epochs,
-              steps_per_epoch=1,  # shuffle=True,
-              validation_data=validation.generate(limit=epochs),
-              validation_steps=1,
+    # model.fit(train.generate(limit=epochs), epochs=epochs,
+    #           steps_per_epoch=1,  shuffle=True,
+    #           validation_data=validation.generate(limit=epochs),
+    #           validation_steps=1,
+    #           callbacks=[logger, csv_logger])
+    model.fit(x=train.dataset[0], y=train.dataset[1], epochs=epochs,
+              batch_size=50000, shuffle=True,
+              validation_data=(validation.dataset[0], validation.dataset[1]),
               callbacks=[logger, csv_logger])
 
     # Evaluate the model.
     print("Evaluation on test set:")
-    _, prec, rec, f1 = model.evaluate(test.generate(limit=epochs),
-                                      steps=test.dime)
+    _, prec, rec, f1 = model.evaluate(x=test.dataset[0], y=test.dataset[1])
+    # _, prec, rec, f1 = model.evaluate(test.generate(limit=epochs),
+    #                                   steps=1)
 
-    for c, t in enumerate(list(test.generate(limit=1))):
-        predictions = model.predict(t)
-        predictions = dataset.transpose(predictions)
-        predictions = dataset.convert(predictions)
-        test = t[0]
-        # test = test[:, 0, :]
-        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(20, 8))
-        plot_piano_roll(dataset.transpose(test), 21, 109, ax1, FS)
-        ax1.set_title('Test ' + str(c))
+    predictions = model.predict(x=test.dataset[0])
+    print("Pred shape: ", predictions.shape)
+    predictions = dataset.transpose(predictions)
+    predictions = dataset.convert(predictions)
+    # test = test[:, 0, :]
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 5))
+    plot_piano_roll(dataset.transpose(test.dataset[1]), 21, 109, ax1, FS)
+    ax1.set_title('Test')
 
-        plot_piano_roll(predictions, 21, 109, ax2, FS)
-        ax2.set_title('Predictions ' + str(c))
-        # plt.show()
-
+    plot_piano_roll(predictions, 21, 109, ax2, FS)
+    ax2.set_title('Predictions')
     plt.show()
 
 

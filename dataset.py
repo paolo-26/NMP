@@ -5,7 +5,6 @@ import pandas as pd
 import numpy as np
 import librosa.display
 import pretty_midi as pm
-import time
 import copy
 
 
@@ -65,9 +64,10 @@ class DataGenerator:
 
     def generate(self, limit=None):
         """Yield a dataset."""
-        print("Yielding dataset %s times" % limit)
-        for e in range(limit):
+        while True:
             yield self.dataset
+            if limit == 1:
+                break
 
     def build_dataset(self, name, step=1, t_step=1):
         """Build a dataset."""
@@ -85,20 +85,8 @@ class DataGenerator:
             if self.binar:
                 prt = self.binarize(prt)
 
-            if flag == 0:
-                target = prt[step:, :]
-                data = prt[:-t_step, :]
-                flag = 1
-
-            else:
-                target2 = prt[step:, :]
-                data2 = prt[:-t_step, :]
-
-                b = np.concatenate((target, target2), axis=0)
-                a = np.concatenate((data, data2), axis=0)
-
-                data = copy.copy(a)
-                target = copy.copy(b)
+            target = prt[step:, :]
+            data = prt[:-t_step, :]
 
             if step > 1:
                 data_new = []
@@ -110,11 +98,25 @@ class DataGenerator:
 
             if t_step > 1:
                 target_new = []
-                for c in range(len(target)-step+1):
-                    conc = [target[x] for x in range(c, c+step)]
+                for c in range(len(target)-t_step+1):
+                    conc = [target[x] for x in range(c, c+t_step)]
                     target_new.append(np.concatenate(conc, axis=None))
 
                 target = np.array(target_new)
+
+            if flag == 0:
+                a = copy.copy(data)
+                b = copy.copy(target)
+                flag = 1
+
+            else:
+                a2 = copy.copy(a)
+                b2 = copy.copy(b)
+                b = np.concatenate((b2, target), axis=0)
+                a = np.concatenate((a2, data), axis=0)
+
+                data = copy.copy(a)
+                target = copy.copy(b)
 
         self.dataset = ((data, target))
         self.dime = len(data)
