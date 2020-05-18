@@ -9,16 +9,18 @@ import model as mod
 import dataset
 from dataset import plot_piano_roll
 from pathlib import Path
+import time
 
 P = Path(__file__).parent.absolute()
 FS = 100  # Sampling frequency
+BS = 512  # Batch size
 
 
 def main():
     """Run main script."""
     # Load midi files.
     midi_list = [x for x in os.listdir(P / "data") if x.endswith('.mid')]
-    epochs = 50
+    epochs = 15
     st = 1
     num_ts = 1
 
@@ -29,8 +31,9 @@ def main():
 
     # Small dataset
     train_list = midi_list[0:30]
-    validation_list = midi_list[30:36]
-    test_list = midi_list[40:43]
+    validation_list = midi_list[30:39]
+    test_list = midi_list[40:45]
+
     print("Train list:  ", train_list)
     print("Validation list:  ", validation_list)
     print("Test list:  ", test_list)
@@ -38,11 +41,13 @@ def main():
     # Build Keras model.
     model = mod.build_model(st*88, num_ts)
     now = datetime.now()
+
+    # Save logs
     logger = TensorBoard(log_dir=P / 'logs' / now.strftime("%Y%m%d-%H%M%S"),
                          write_graph=True, update_freq='epoch')
 
-    csv_logger = CSVLogger(P / 'logs' / now.strftime("%Y%m%d-%H%M%S") /
-                           'log.csv',
+    csv_logger = CSVLogger(P / 'logs' / (now.strftime("%Y%m%d-%H%M%S") + '-' +
+                           str(st) + '-' + str(num_ts) + '.csv'),
                            separator=',', append=False)
 
     # Create generators.
@@ -59,14 +64,17 @@ def main():
     #           validation_data=validation.generate(limit=epochs),
     #           validation_steps=1,
     #           callbacks=[logger, csv_logger])
+    start = time.time()
     model.fit(x=train.dataset[0], y=train.dataset[1], epochs=epochs,
-              batch_size=50000, shuffle=True,
+              batch_size=BS, shuffle=True,
               validation_data=(validation.dataset[0], validation.dataset[1]),
               callbacks=[logger, csv_logger])
+    end = time.time()
 
     # Evaluate the model.
     print("Evaluation on test set:")
-    _, prec, rec, f1 = model.evaluate(x=test.dataset[0], y=test.dataset[1])
+    _, prec, rec, f1 = model.evaluate(x=test.dataset[0], y=test.dataset[1],
+                                      batch_size=BS)
     # _, prec, rec, f1 = model.evaluate(test.generate(limit=epochs),
     #                                   steps=1)
 
@@ -81,7 +89,8 @@ def main():
 
     plot_piano_roll(predictions, 21, 109, ax2, FS)
     ax2.set_title('Predictions')
-    plt.show()
+    # plt.show()
+    print("Training time: ", (end-start))
 
 
 if __name__ == '__main__':

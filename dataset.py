@@ -112,92 +112,14 @@ class DataGenerator:
             else:
                 a2 = copy.copy(a)
                 b2 = copy.copy(b)
-                b = np.concatenate((b2, target), axis=0)
                 a = np.concatenate((a2, data), axis=0)
+                b = np.concatenate((b2, target), axis=0)
 
                 data = copy.copy(a)
                 target = copy.copy(b)
 
         self.dataset = ((data, target))
         self.dime = len(data)
-
-    def generate2(self, step=1, t_step=1, limit=None):
-        """Yield the entire dataset infinite times.
-
-        Target and data differ by one timestep.
-        If limit==1: stop generator after 1 epoch.
-
-        step: number of timesteps used for prediction
-        t_step: number of timesteps to be predicted
-        """
-        while True:
-            flag = 0
-            print("Building dataset (%d files)" % len(self.midi_list))
-            for m in self.midi_list:
-                midi_object = pm.PrettyMIDI(str(self.path / m))
-
-                if self.quant:
-                    midi_object = self.quantize(midi_object)
-
-                pr = midi_object.get_piano_roll(self.fs)
-                prt = transpose(pr[21:109, :])
-
-                if self.binar:
-                    prt = self.binarize(prt)
-
-                if flag == 0:
-                    target = prt[step:, :]
-                    data = prt[:-t_step, :]
-                    flag = 1
-
-                else:
-                    target2 = prt[step:, :]
-                    data2 = prt[:-t_step, :]
-                    b = np.concatenate((target, target2), axis=0)
-                    a = np.concatenate((data, data2), axis=0)
-                    data = copy.copy(a)
-                    target = copy.copy(b)
-
-                if step > 1:
-                    data_new = []
-                    for c in range(len(data)-step+1):
-                        conc = [data[x] for x in range(c, c+step)]
-                        data_new.append(np.concatenate(conc, axis=None))
-
-                    data = np.array(data_new)
-
-                if t_step > 1:
-                    target_new = []
-                    for c in range(len(target)-step+1):
-                        conc = [target[x] for x in range(c, c+step)]
-                        target_new.append(np.concatenate(conc, axis=None))
-
-                    target = np.array(target_new)
-
-                # if step > 1:
-                #     data_new = []
-                #     for c in range(len(data)-step+1):
-                #         data_new.append(np.array(data[c:c+step]))
-
-                #     data = np.array(data_new)
-
-                # if step > 1:
-                #     target_new = []
-                #     for c in range(len(target)-step+1):
-                #         target_new.append(np.array(target[c:c+step]))
-
-                #     target = np.array(target_new)
-                # self.big_matrix.append((data, target))
-                # print("D: ", data.shape)
-                # print("T: ", target.shape)
-
-            # print("Data shape : ", data.shape)
-            # print("Target shape: ", target.shape)
-            # time.sleep(50)
-            yield ((data, target))
-
-            if limit == 1:
-                break
 
 
 class DataGeneratorOld:

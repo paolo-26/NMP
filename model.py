@@ -5,18 +5,21 @@ from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense
 # from tensorflow.keras.layers import Flatten
 # from tensorflow.keras.layers import SimpleRNN
-# import tensorflow as tf
+import tensorflow as tf
 import keras.metrics
 import keras.backend as K
 
 
 def build_model(inp_shape, num_ts):
     """Create Keras model."""
-    # physical_devices = tf.config.list_physical_devices('GPU')
-    # tf.config.experimental.set_memory_growth(physical_devices[0], True)
+    # Allow memory growth.
+    physical_devices = tf.config.list_physical_devices('GPU')
+    tf.config.experimental.set_memory_growth(physical_devices[0], True)
+
+    # Create the model.
     model = Sequential()
-    model.add(Dense(90, input_shape=(inp_shape,),  activation='relu'))
-    model.add(Dense(80, input_shape=(inp_shape,),  activation='relu'))
+    model.add(Dense(64, input_shape=(inp_shape,),  activation='relu'))
+    model.add(Dense(64, input_shape=(inp_shape,),  activation='relu'))
     model.add(Dense(88, activation='sigmoid', name='Output'))
 
     # opt = tf.keras.optimizers.SGD(learning_rate=0.1)
