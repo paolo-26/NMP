@@ -1,0 +1,7 @@
+# TensorBoard logs
+*.csv
+*.v2
+*.profile-empty
+*.trace
+*.pb
+*.gz
