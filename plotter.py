@@ -20,35 +20,85 @@ def smooth(scalars, weight=0.4):
 
 def load_file(filename):
     """Load csv file."""
-    df = pd.read_csv(P / 'logs' / filename / 'log.csv')
+    # df = pd.read_csv(P / 'logs' / filename / 'log.csv')
+    df = pd.read_csv(P / 'logs' / 'moretimesteps' / (filename + '.csv'))
     return df
 
 
 def main():
     """Plot training and validation data."""
 
-    name = '20200516-131302'  # 20 min Adam 1-1
-    # name = '20200516-115508'  # 10 epochs SGD 1-1
-    data = load_file(name)
-    print(data)
-    metrics = ['F1 score', 'Loss', 'Precision', 'Recall']
-    for m, metric in enumerate(['f1', 'loss', 'precision_1', 'recall_1']):
-        plt.figure(constrained_layout=True, figsize=(6, 4))
-        plt.plot(smooth(data[metric]), '-', markersize=5.5, label='Training')
-        plt.plot(smooth(data['val_' + metric]), 'o', markersize=5,
-                 label='Validation')
-        plt.title(metrics[m], fontsize='x-large')
-        plt.ylabel(metrics[m], fontsize='x-large')
-        plt.xlabel('Epoch', fontsize='x-large')
-        # plt.grid(which='both')
-        plt.xticks([0, 5, 10, 15, 20])
-        # plt.xticks(data["epoch"])
-        plt.legend(fontsize='x-large')
-        ax = plt.gca()
-        ax.tick_params(labelsize='x-large')
-        plt.savefig(P / 'plots' / (name + '-' + metric + '.eps'),
-                    format='eps')
-    # plt.show()
+    # exp1
+    # name = '20200517-114951-1-1'
+    # name = '20200517-115539-2-1'
+
+    # name = '20200517-133959-1-1'
+    # name = '20200517-133437-2-1'
+    # name = '20200517-132921-3-1'
+    # name = '20200517-132246-4-1'
+    # name = '20200517-125637-5-1'
+    # name = '20200517-142537-6-1'
+
+    # Batches.
+    # name = '20200518-094510-1-1'
+    # name = '20200518-095410-1-1'
+    # name = '20200518-100240-1-1'
+    # name = '20200518-100949-1-1'
+
+    # More timesteps
+    # name = '20200517-170927-2-1'
+    # name = '20200517-170358-2-2'
+    # name = '20200517-165712-2-3'
+    # name = '20200517-164007-2-4'
+    # name = '20200517-163431-2-5'
+    # name = '20200517-164558-2-6'
+
+    # data = load_file(name)
+    # print(data)
+    # metrics = ['F1 score', 'Loss', 'Precision', 'Recall']
+    # for m, metric in enumerate(['f1', 'loss', 'precision_1', 'recall_1']):
+    #     plt.figure(constrained_layout=True, figsize=(6, 4))
+    #     plt.plot(smooth(data[metric]), '-', markersize=5.5, label='Training')
+    #     plt.plot(smooth(data['val_' + metric]), 'o', markersize=5,
+    #              label='Validation')
+    #     plt.title(metrics[m], fontsize='x-large')
+    #     plt.ylabel(metrics[m], fontsize='x-large')
+    #     plt.xlabel('Epoch', fontsize='x-large')
+    #     # plt.grid(which='both')
+    #     plt.xticks([0, 10, 20, 30, 40, 50])
+    #     # plt.xticks(data["epoch"])
+    #     if metric == 'f1':
+    #         plt.ylim([0, 1])
+    #     plt.legend(fontsize='x-large')
+    #     ax = plt.gca()
+    #     ax.tick_params(labelsize='x-large')
+    #     plt.savefig(P / 'plots' / (name + '-' + metric + '.eps'),
+    #                 format='eps')
+    #     plt.savefig(P / 'plots' / (name + '-' + metric + '.png'),
+    #                 format='png')
+
+    # Single  plots.
+    file = ['20200517-170927-2-1', '20200517-170358-2-2',
+            '20200517-165712-2-3', '20200517-164007-2-4',
+            '20200517-163431-2-5', '20200517-164558-2-6']
+    metrics = ['Loss']
+    styles = ['s', 'o', '^', 'd', 'p', 'P']
+    plt.figure(constrained_layout=True, figsize=(6, 4))
+    for n, f in enumerate(file):
+        data = load_file(f)
+        for m, metric in enumerate(['loss']):
+            plt.plot(smooth(data['val_' + metric]), '-'+styles[n],
+                     markersize=6, label=n+1)
+            plt.title(metrics[m], fontsize='x-large')
+            plt.ylabel(metrics[m], fontsize='x-large')
+            plt.xlabel('Epoch', fontsize='x-large')
+            plt.xticks([0, 5, 10, 15])
+            plt.legend(fontsize='x-large', ncol=3)
+            ax = plt.gca()
+            ax.tick_params(labelsize='x-large')
+            plt.savefig(P / 'plots' / ('Lossmore.eps'),
+                        format='eps')
+    plt.show()
 
     # labels = ['Training', 'Validation']
     # metrics = ['F1 score', 'Loss', 'Precision', 'Recall']
