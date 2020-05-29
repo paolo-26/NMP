@@ -6,6 +6,7 @@ import numpy as np
 import librosa.display
 import pretty_midi as pm
 import copy
+import time
 
 
 def transpose(data):
@@ -87,21 +88,24 @@ class DataGenerator:
 
             target = prt[step:, :]
             data = prt[:-t_step, :]
+            # target = prt
+            # data = prt
 
-            if step > 1:
+            if step > 0:
                 data_new = []
                 for c in range(len(data)-step+1):
-                    conc = [data[x] for x in range(c, c+step)]
-                    data_new.append(np.concatenate(conc, axis=None))
+                    conc = np.array([data[x] for x in range(c, c+step)])
+                    data_new.append(conc)
+                    # data_new.append(np.concatenate(conc, axis=None))
 
                 data = np.array(data_new)
 
-            if t_step > 1:
+            if t_step > 0:
                 target_new = []
                 for c in range(len(target)-t_step+1):
-                    conc = [target[x] for x in range(c, c+t_step)]
+                    conc = np.array([target[x] for x in range(c, c+t_step)])
+                    # target_new.append(conc)
                     target_new.append(np.concatenate(conc, axis=None))
-
                 target = np.array(target_new)
 
             if flag == 0:
@@ -119,6 +123,9 @@ class DataGenerator:
                 target = copy.copy(b)
 
         self.dataset = ((data, target))
+        # print(data.shape)
+        # print(target.shape)
+        # time.sleep(50)
         self.dime = len(data)
 
 
