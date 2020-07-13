@@ -21,7 +21,7 @@ def smooth(scalars, weight=0.4):
 def load_file(filename):
     """Load csv file."""
     # df = pd.read_csv(P / 'logs' / filename / 'log.csv')
-    df = pd.read_csv(P / 'logs' / 'moretimesteps' / (filename + '.csv'))
+    df = pd.read_csv(P / 'logs' / (filename + '.csv'))
     return df
 
 
@@ -53,6 +53,8 @@ def main():
     # name = '20200517-163431-2-5'
     # name = '20200517-164558-2-6'
 
+    # name = '20200602-105028-1-1'  # Baseline 1-1
+    # name = '20200602-112257-1-1'  # 1-1
     # data = load_file(name)
     # print(data)
     # metrics = ['F1 score', 'Loss', 'Precision', 'Recall']
@@ -65,7 +67,7 @@ def main():
     #     plt.ylabel(metrics[m], fontsize='x-large')
     #     plt.xlabel('Epoch', fontsize='x-large')
     #     # plt.grid(which='both')
-    #     plt.xticks([0, 10, 20, 30, 40, 50])
+    #     plt.xticks([0, 5, 10, 15, 20])
     #     # plt.xticks(data["epoch"])
     #     if metric == 'f1':
     #         plt.ylim([0, 1])
@@ -100,6 +102,7 @@ def main():
                         format='eps')
     plt.show()
 
+    # Other
     # labels = ['Training', 'Validation']
     # metrics = ['F1 score', 'Loss', 'Precision', 'Recall']
     # for m, metric in enumerate(['f1', 'loss']):

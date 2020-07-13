@@ -110,8 +110,8 @@ class DataGenerator:
 
     def generate_transposed(self):
         """Create a generator for transposed dataset."""
-        # for v in [-5, -4, -3, -2, -1, 1, 2, 3, 4, 5]:
-        for v in [-5, -3, -1, 1, 3, 5]:
+        # for v in [-5, -3, -1, 1, 3, 5]:
+        for v in [-5, -4, -3, -2, -1, 1, 2, 3, 4, 5]:
             x = self.pitch_transpose(self.dataset[0], v, 1)
             y = self.pitch_transpose(self.dataset[1], v)
             yield (x, y)

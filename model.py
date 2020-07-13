@@ -25,10 +25,17 @@ def build_model(inp_shape, num_ts):
     model.add(Dense(32, activation='relu'))
     model.add(Dense(88*num_ts, activation='sigmoid', name='Output'))
 
+    # Create the model with RNN.
+    # model = Sequential()
+    # model.add(SimpleRNN(32, return_sequences=True,
+    #                     input_shape=(inp_shape),  activation='relu'))
+    # model.add(SimpleRNN(32, return_sequences=True, activation='relu'))
+    # model.add(SimpleRNN(88*num_ts, activation='sigmoid', name='Output'))
+
     # opt = tf.keras.optimizers.SGD(learning_rate=0.1)
 
     model.compile(loss='binary_crossentropy',
-                  optimizer='adam',
+                  optimizer='rmsprop',
                   metrics=[keras.metrics.Precision(),
                            keras.metrics.Recall(),
                            f1_first, f1_last])
