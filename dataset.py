@@ -3,9 +3,10 @@
 """Dataset functions."""
 import pandas as pd
 import numpy as np
-import librosa.display
-import pretty_midi as pm
+# import librosa.display
+# import pretty_midi as pm
 import copy
+import pypianoroll
 
 
 def transpose(data):
@@ -26,12 +27,34 @@ def convert(data):
     return data
 
 
-def plot_piano_roll(pr, start_pitch, end_pitch, ax, fs=100):
+# def plot_piano_roll(pr, start_pitch, end_pitch, ax, fs=100):
+#     """Plot piano roll representation."""
+#     librosa.display.specshow(pr[start_pitch:end_pitch], hop_length=1, sr=fs,
+#                              x_axis='time', y_axis='cqt_note',
+#                              fmin=pm.note_number_to_hz(start_pitch),
+#                              ax=ax)
+
+def pad_piano_roll(pr):
+    """Pad cropped piano roll."""
+    L = len(pr)
+    pad1 = np.zeros((L, 21))
+    pad2 = np.zeros((L, 19))
+    pr = np.concatenate((pad1, pr, pad2), axis=1)
+    return pr
+
+
+def pyplot_piano_roll(pr, cmap="Blues"):
     """Plot piano roll representation."""
-    librosa.display.specshow(pr[start_pitch:end_pitch], hop_length=1, sr=fs,
-                             x_axis='time', y_axis='cqt_note',
-                             fmin=pm.note_number_to_hz(start_pitch),
-                             ax=ax)
+    pr = pad_piano_roll(pr)
+    pr = pypianoroll.Track(pianoroll=pr)
+    return pypianoroll.plot_track(pr, cmap=cmap)
+
+
+def import_one(filename, beat_resolution):
+    """Import one file and generate a piano roll."""
+    pr = pypianoroll.parse(filename, beat_resolution)
+    merged = pr.get_merged_pianoroll()
+    return merged
 
 
 class DataGenerator:
@@ -108,6 +131,21 @@ class DataGenerator:
             # if limit == 1:
             #     break
 
+    # def import_one_pretty(self, filename, fs, quant=0, binar=0):
+    #     """Import one file and generate a piano roll."""
+    #     midi_object = pm.PrettyMIDI(filename)
+    #
+    #     if quant:
+    #         midi_object = self.quantize(midi_object)
+    #
+    #     pr = midi_object.get_piano_roll(fs)
+    #     prt = transpose(pr[21:109, :])
+    #
+    #     if binar:
+    #         prt = self.binarize(prt)
+    #
+    #     return prt
+
     def generate_transposed(self):
         """Create a generator for transposed dataset."""
         # for v in [-5, -3, -1, 1, 3, 5]:
@@ -138,17 +176,13 @@ class DataGenerator:
         print("Building %s dataset (%d files)" % (name, len(self.midi_list)))
         flag = 0
         for m in self.midi_list:
-            midi_object = pm.PrettyMIDI(str(self.path / m))
 
-            if self.quant:
-                midi_object = self.quantize(midi_object)
+            prt = import_one(str(self.path / m), beat_resolution=self.fs)
+            prt = prt[:, 21:109]
+            prt = self.binarize(prt)
 
-            pr = midi_object.get_piano_roll(self.fs)
-            prt = transpose(pr[21:109, :])
-
-            if self.binar:
-                prt = self.binarize(prt)
-
+            # prt = self.import_one_pretty(str(self.path / m),
+            #                              self.fs, self.quant, self.binar)
             if self.baseline:
                 data = prt[:-t_step, :]
                 target = prt[step-1:-1, :]
@@ -199,44 +233,3 @@ class DataGenerator:
 
         self.dataset = ((data, target))
         self.dime = len(data)
-
-
-class DataGeneratorOld:
-    """Alternative generator which yields batches of equal size."""
-
-    def __init__(self):
-        """Initialize."""
-        self.flag = 0
-        self.dimension = 0
-
-    def load_file(self, filename, fs=4):
-        """Load a single file and create inputs and targets data."""
-        pr = pm.PrettyMIDI(filename).get_piano_roll(fs)
-        pr = transpose(pr)
-        self.load_data(pr[1:, :], pr[:-1, :])
-
-    def load_data(self, inputs, targets):
-        """Load inputs and targets into database."""
-        if self.flag == 0:
-            self.inputs = inputs
-        else:
-            self.inputs = np.concatenate((self.inputs, inputs), axis=0)
-
-        if self.flag == 0:
-            self.targets = targets
-        else:
-            self.targets = np.concatenate((self.targets, targets), axis=0)
-
-        self.flag = 1
-
-        self.dimension += len(inputs)
-
-    def generate_data(self, bs, steps):
-        """Yield batches of data."""
-        step = 0
-        for s in range(steps):
-            tup = (self.inputs[step*bs:step*bs+bs],
-                   self.targets[step*bs:step*bs+bs])
-            step += 1
-            print(step*bs, step*bs+bs)
-            yield tup
