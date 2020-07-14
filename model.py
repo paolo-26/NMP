@@ -4,11 +4,14 @@
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense
 from tensorflow.keras.layers import Flatten
+from keras.models import model_from_yaml
 # from tensorflow.keras.layers import Dropout
 # from tensorflow.keras.layers import SimpleRNN
 import tensorflow as tf
 import keras.metrics
 import keras.backend as K
+from keras.utils import CustomObjectScope
+from keras.initializers import glorot_uniform
 
 
 def build_model(inp_shape, num_ts):
@@ -33,14 +36,45 @@ def build_model(inp_shape, num_ts):
     # model.add(SimpleRNN(88*num_ts, activation='sigmoid', name='Output'))
 
     # opt = tf.keras.optimizers.SGD(learning_rate=0.1)
+    return model
 
-    model.compile(loss='binary_crossentropy',
-                  optimizer='rmsprop',
+
+def compile_model(model, loss, optimizer):
+    """Compile Keras model."""
+    model.compile(loss=loss,
+                  optimizer=optimizer,
                   metrics=[keras.metrics.Precision(),
                            keras.metrics.Recall(),
                            f1_first, f1_last])
 
-    return model
+
+def save_model(model, path):
+    """Save model to disk."""
+    # Serialize model to YAML.
+    model_yaml = model.to_yaml()
+    with open(path / 'model.yaml', 'w') as yaml_file:
+        yaml_file.write(model_yaml)
+
+    # Serialize weights to HDF5.
+    model.save_weights(str(path / 'model.h5'))
+    print("Saved model to %s." % path)
+
+
+def load_model(path):
+    """Load model from file."""
+    # Load YAML and create model.
+    print(path / 'model.yaml')
+    with open(path / 'model.yaml', 'r') as yaml_file:
+        loaded_model_yaml = yaml_file.read()
+
+    with CustomObjectScope({'GlorotUniform': glorot_uniform()}):
+        loaded_model = model_from_yaml(loaded_model_yaml)
+
+    # Load weights into new models.
+    loaded_model.load_weights(str(path / 'model.h5'))
+    print("Loaded model from disk.")
+
+    return loaded_model
 
 
 def f1(y_true, y_pred):
