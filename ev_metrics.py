@@ -1,32 +1,52 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """Evaluation metrics."""
-import numpy as np
-from sklearn import metrics
+# import numpy as np
+import pandas as pd
+# from sklearn import metrics
+from sklearn.metrics import roc_auc_score
+from math import nan
 
 
 def compute_auc(x, y):
-    """Compute AUC-ROC for every timestep and return the list of AUCs."""
+    """Compute AUC-ROC for every timestep and return the list of AUCs.
+
+    Averaged over pitches.
+
+    x: true values
+    y: score values
+
+    Returns a dataframe of shape (88, n_ft)
+    """
     n_ft = int(x.shape[1]/88)  # Number of future timesteps
     start = 0
     end = start + 88
-    aucs = []  # List of AUC values; one value per timestep
+    auc = []
+    aucs = []
 
-    for o in range(n_ft):  # For every predicted (future) timestep
-        L = len(x)  # Number of instances
-        auc = []  # List of AUCs values for all instances.
-        for i in range(L):
+    for i in range(n_ft):
+        auc = []
+        for p in range(87, -1, -1):
 
-            fpr, tpr, thresholds = metrics.roc_curve(x[i, start:end],
-                                                     y[i, start:end],
-                                                     pos_label=1)
+            try:
+                score = roc_auc_score(x[:, start+p],  y[:, start+p])
 
-            # Append AUC value for specific instance.
-            auc.append(metrics.auc(fpr, tpr))
+            except Exception:
+                # There are no played notes.
+                score = nan
 
-        aucs.append(np.nanmean(auc))  # Average AUC for current timestep
+            auc.append(score)
 
+            # fpr, tpr, thresholds = metrics.roc_curve(x[:, start+p],
+            #                                          y[:, start+p],
+            #                                          pos_label=1)
+
+            # auc.append(metrics.auc(fpr, tpr))
+
+        aucs.append(auc)
         start += 88  # Next predicted timestep
         end += 88  # Next predicted timestep
 
-    return aucs
+    auc_df = pd.DataFrame(aucs).transpose()
+    auc_df.index = list(range(88, 0, -1))
+    return auc_df
