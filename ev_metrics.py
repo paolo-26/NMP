@@ -29,13 +29,13 @@ def compute_auc(x, y):
         for p in range(87, -1, -1):
 
             try:
-                score = roc_auc_score(x[:, start+p],  y[:, start+p])
+                auc.append(roc_auc_score(x[:, start+p],  y[:, start+p]))
 
             except Exception:
                 # There are no played notes.
-                score = nan
+                auc.append(nan)
 
-            auc.append(score)
+            # auc.append(score)
 
             # fpr, tpr, thresholds = metrics.roc_curve(x[:, start+p],
             #                                          y[:, start+p],

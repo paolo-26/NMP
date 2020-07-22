@@ -17,14 +17,12 @@ def transpose(data):
 
 def binarize(data):
     """Binarize data."""
-    data = np.array([[1 if e else 0 for e in r] for r in data])
-    return data
+    return np.array([[1 if e else 0 for e in r] for r in data])
 
 
 def convert(data):
     """Convert data from sigmoid output to 0-1."""
-    data = np.array([[1 if e > 0.5 else 0 for e in r] for r in data])
-    return data
+    return np.array([[1 if e > 0.5 else 0 for e in r] for r in data])
 
 
 # def plot_piano_roll(pr, start_pitch, end_pitch, ax, fs=100):
@@ -43,17 +41,26 @@ def pad_piano_roll(pr):
     return pr
 
 
-def pyplot_piano_roll(pr, cmap="Blues"):
+def pyplot_piano_roll(pr, cmap="Blues", br=None, db=None):
     """Plot piano roll representation."""
     pr = pad_piano_roll(pr)
     pr = pypianoroll.Track(pianoroll=pr)
-    return pypianoroll.plot_track(pr, cmap=cmap)
+    return pypianoroll.plot_track(pr, cmap=cmap,
+                                  beat_resolution=br, downbeats=db)
 
 
-def import_one(filename, beat_resolution):
+def import_one(filename, beat_resolution, binarize=0, transpose=0):
     """Import one file and generate a piano roll."""
     pr = pypianoroll.parse(filename, beat_resolution)
+
+    if binarize:
+        pr = pypianoroll.binarize(pr)
+
+    if transpose != 0:
+        pr.transpose(transpose)
+
     merged = pr.get_merged_pianoroll()
+
     return merged
 
 
@@ -69,6 +76,8 @@ class DataGenerator:
         self.binar = binarize
         self.path = path
         self.baseline = bl
+        self.data = []
+        self.targets = []
 
     def binarize(self, pr):
         """Binarize data."""
@@ -171,18 +180,17 @@ class DataGenerator:
 
         self.dataset = (x_data, y_target)
 
-    def build_dataset(self, name, step=1, t_step=1):
+    def build_dataset(self, name, step=1, t_step=1, transpose=0):
         """Build a dataset."""
         print("Building %s dataset (%d files)" % (name, len(self.midi_list)))
-        flag = 0
+
         for m in self.midi_list:
 
-            prt = import_one(str(self.path / m), beat_resolution=self.fs)
+            prt = import_one(str(self.path / m), beat_resolution=self.fs,
+                             binarize=0, transpose=transpose)
             prt = prt[:, 21:109]
             prt = self.binarize(prt)
 
-            # prt = self.import_one_pretty(str(self.path / m),
-            #                              self.fs, self.quant, self.binar)
             if self.baseline:
                 data = prt[:-t_step, :]
                 target = prt[step-1:-1, :]
@@ -217,19 +225,17 @@ class DataGenerator:
 
                 target = np.array(target_new)
 
-            if flag == 0:
-                a = copy.copy(data)
-                b = copy.copy(target)
-                flag = 1
+            self.data.append(data)
+            self.targets.append(target)
 
-            else:
-                a2 = copy.copy(a)
-                b2 = copy.copy(b)
-                a = np.concatenate((a2, data), axis=0)
-                b = np.concatenate((b2, target), axis=0)
+        self.concatenate_all()
 
-                data = copy.copy(a)
-                target = copy.copy(b)
-
-        self.dataset = ((data, target))
-        self.dime = len(data)
+    def concatenate_all(self):
+        """Build dataset by concatenating all files."""
+        # self.data = [x for x in self.data]
+        # self.targets = [x for x in self.targets]
+        self.data = np.concatenate([x for x in self.data], axis=0)
+        self.targets = np.concatenate([x for x in self.targets], axis=0)
+        self.dataset = (self.data, self.targets)
+        del self.data
+        del self.targets
