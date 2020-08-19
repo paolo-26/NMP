@@ -5,7 +5,7 @@ from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense
 from tensorflow.keras.layers import Flatten
 # from tensorflow.keras.layers import Dropout
-# from tensorflow.keras.layers import SimpleRNN
+from tensorflow.keras.layers import SimpleRNN
 import tensorflow as tf
 # import keras.metrics
 
@@ -15,8 +15,10 @@ tf.config.experimental.set_memory_growth(physical_devices[0], True)
 
 
 def build_model(inp_shape, num_ts):
-    num_ts = int(num_ts)
     """Create Keras model."""
+
+    num_ts = int(num_ts)
+    # opt = tf.keras.optimizers.SGD(learning_rate=0.1)
 
     # Create the model.
     model = Sequential()
@@ -26,13 +28,13 @@ def build_model(inp_shape, num_ts):
     model.add(Dense(88*num_ts, activation='sigmoid', name='Output'))
 
     # Create the model with RNN.
-    # model = Sequential()
-    # model.add(SimpleRNN(32, return_sequences=True,
-    #                     input_shape=(inp_shape),  activation='relu'))
-    # model.add(SimpleRNN(32, return_sequences=True, activation='relu'))
-    # model.add(SimpleRNN(88*num_ts, activation='sigmoid', name='Output'))
+    model = Sequential()
+    model.add(SimpleRNN(64, return_sequences=True,
+                        input_shape=(inp_shape),  activation='relu'))
+    model.add(SimpleRNN(128, return_sequences=True, activation='relu'))
+    model.add(SimpleRNN(32, activation='relu'))
+    model.add(Dense(88*num_ts, activation='sigmoid', name='Output'))
 
-    # opt = tf.keras.optimizers.SGD(learning_rate=0.1)
     return model
 
 
