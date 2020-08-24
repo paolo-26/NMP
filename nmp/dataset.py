@@ -21,7 +21,7 @@ def binarize(data):
     return np.array([[1 if e else 0 for e in r] for r in data])
 
 
-def convert(data, thresh=0.5):
+def threshold(data, thresh=0.5):
     """Convert data from sigmoid output to 0-1."""
     return np.array([[1 if e > thresh else 0 for e in r] for r in data])
 
@@ -210,7 +210,7 @@ def generate(datasets, bs=64, trans=0):
     """Yield dataset with random order and transposition."""
     length = datasets[0].shape[0]
     randomize = list(range(length))
-    transpositions = list(range(-5, 6))
+    transpositions = list(range(-5, 7))
 
     while True:
         random.shuffle(randomize)
