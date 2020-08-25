@@ -3,9 +3,6 @@
 """Dataset functions."""
 import pandas as pd
 import numpy as np
-# import librosa.display
-# import pretty_midi as pm
-# import copy
 import pypianoroll
 import random
 
@@ -33,21 +30,22 @@ def threshold(data, thresh=0.5):
 #                              fmin=pm.note_number_to_hz(start_pitch),
 #                              ax=ax)
 
-def pad_piano_roll(pr):
+def pad_piano_roll(pr, low_lim=21, high_lim=109):
     """Convert 88-notes piano roll to 128-notes piano roll.
 
     Useful for plotting using pypianoroll library.
     """
     L = len(pr)
-    pad1 = np.zeros((L, 21))
-    pad2 = np.zeros((L, 19))
+    pad1 = np.zeros((L, low_lim))
+    pad2 = np.zeros((L, 128 - high_lim))
     pr = np.concatenate((pad1, pr, pad2), axis=1)
     return pr
 
 
-def pyplot_piano_roll(pr, cmap="Blues", br=None, db=None):
+def pyplot_piano_roll(pr, cmap="Blues", br=None, db=None, low_lim=21,
+                      high_lim=109):
     """Plot piano roll representation."""
-    pr = pad_piano_roll(pr)
+    pr = pad_piano_roll(pr, low_lim, high_lim)
     pr = pypianoroll.Track(pianoroll=pr)
     return pypianoroll.plot_track(pr, cmap=cmap,
                                   beat_resolution=br, downbeats=db)
@@ -140,7 +138,8 @@ class Dataset:
     #         # if limit == 1:
     #         #     break
 
-    def build_dataset(self, name, step, t_step, steps, down, transpose=0):
+    def build_dataset(self, name, step, t_step, steps, down, transpose=0,
+                      low_lim=21, high_lim=109):
         """Build a dataset."""
         print("Building %s dataset (%d files)" % (name, len(self.midi_list)))
 
@@ -148,7 +147,7 @@ class Dataset:
 
             prt = import_one(str(self.path / m), beat_resolution=self.fs,
                              binarize=0)
-            prt = prt[:, 21:109]  # Crop piano roll from 128 to 88 notes.
+            prt = prt[:, low_lim:high_lim]  # Crop piano roll
             prt = self.binarize(prt)
 
             if down > 1:
