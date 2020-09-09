@@ -26,18 +26,19 @@ def build_model(inp_shape, num_ts, num_notes):
     model.add(Flatten())
     model.add(Dense(32, activation='relu'))
     model.add(Dense(num_notes*num_ts, activation='sigmoid', name='Output'))
-    #
+
     # # Create the model with RNN.
     # model = Sequential()
-    # model.add(SimpleRNN(64, return_sequences=True,
+    # model.add(SimpleRNN(16, return_sequences=True,
     #                     input_shape=(inp_shape),  activation='relu'))
-    # model.add(SimpleRNN(128, return_sequences=True, activation='relu'))
-    # model.add(SimpleRNN(32, activation='relu'))
+    # model.add(SimpleRNN(16, activation='relu'))
     # model.add(Dense(num_notes*num_ts, activation='sigmoid', name='Output'))
 
     # Create the model with LSTM.
     # model = Sequential()
-    # model.add(LSTM(32,  input_shape=(inp_shape),  activation='relu'))
+    # model.add(LSTM(16,  input_shape=(inp_shape), return_sequences=True,
+    #                activation='relu'))
+    # model.add(LSTM(16, activation='relu'))
     # model.add(Flatten())
     # model.add(Dense(num_notes*num_ts, activation='sigmoid', name='Output'))
 

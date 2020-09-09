@@ -85,11 +85,15 @@ def compute_best_thresh(x, y, num_notes):
 
     best_thresh = None
     best_res = 0
-    for thresh in np.arange(0.01, 0.3, 0.05):
+    results = []
+    thresh_range = np.arange(0.02, 0.3, 0.01)
+    for thresh in thresh_range:
         pred_f1 = compute_f1(x, threshold(y, thresh), num_notes)
         res = np.nanmean(pred_f1)
+        results.append(res)
+        print("%.2f - F1: %.4f" % (thresh, res))
         if res > best_res:
             best_thresh = thresh
             best_res = res
 
-    return (best_thresh, best_res)
+    return (best_thresh, best_res, thresh_range, results)

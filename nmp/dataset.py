@@ -5,6 +5,7 @@ import pandas as pd
 import numpy as np
 import pypianoroll
 import random
+import copy
 
 
 def transpose(data):
@@ -23,12 +24,21 @@ def threshold(data, thresh=0.5):
     return np.array([[1 if e > thresh else 0 for e in r] for r in data])
 
 
-# def plot_piano_roll(pr, start_pitch, end_pitch, ax, fs=100):
-#     """Plot piano roll representation."""
-#     librosa.display.specshow(pr[start_pitch:end_pitch], hop_length=1, sr=fs,
-#                              x_axis='time', y_axis='cqt_note',
-#                              fmin=pm.note_number_to_hz(start_pitch),
-#                              ax=ax)
+def ranked_threshold(data, steps, how_many=3):
+    """Convert data from sigmoid output to 0-1 using most likely notes."""
+    pr = copy.deepcopy(data)
+    n = int(pr.shape[1]/steps)
+    for t in range(pr.shape[0]):
+        for step in range(steps):
+            array = pr[t, step*n:(step+1)*n]
+            vect = copy.deepcopy(array)  # Deep copy
+            vect.sort()  # Can be done thanks to deep copy
+            thresh = vect[-how_many-1]  # Last values
+            pr[t, step*n:(step+1)*n] = np.array([1 if e > thresh
+                                                 else 0 for e in array])
+
+    return pr
+
 
 def pad_piano_roll(pr, low_lim=21, high_lim=109):
     """Convert 88-notes piano roll to 128-notes piano roll.
@@ -61,6 +71,16 @@ def import_one(filename, beat_resolution, binarize=0):
     merged = pr.get_merged_pianoroll()
 
     return merged
+
+
+def write_midi(data, filename, low_lim, high_lim, tempo=120.0):
+    """Save piano roll to a midi file."""
+    pr = copy.deepcopy(data)
+    pr[pr > 0] = 127
+    track = pypianoroll.Track(pad_piano_roll(pr, low_lim, high_lim))
+    multitrack = pypianoroll.Multitrack(tracks=[track], tempo=tempo,
+                                        beat_resolution=2)
+    multitrack.write(filename)
 
 
 class Dataset:
