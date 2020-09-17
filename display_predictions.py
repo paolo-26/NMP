@@ -6,7 +6,7 @@ from pathlib import Path
 # import numpy as np
 from tensorflow.keras.models import load_model
 # import matplotlib.pyplot as plt
-from nmp import dataset, ev_metrics
+from nmp import dataset
 # from tensorflow.keras.layers import LSTM
 import tensorflow as tf
 import copy
@@ -17,15 +17,16 @@ import matplotlib.pyplot as plt
 P = Path(os.path.abspath(''))  # Compatible with Jupyter Notebook
 
 PLOTS = P / 'plots'  # Plots path
-BS = 64
+BS = 32
 FS = 24  # Sampling frequency. 10 Hz = 100 ms
 Q = 0  # Quantize?
 st = 10  # Past timesteps
 num_ts = 10  # Predicted timesteps
 DOWN = 12  # Downsampling factor
-D = "data"  # Dataset (synth or data)
+D = "data/piano-midi"  # Dataset (synth or data)
 # MODEL = 'model-LSTM-24-10-12'
-MODEL = 'compare-3-lstm-1616'
+# MODEL = 'chorales-ff-2'
+MODEL = 'rr-102x1.h5'
 
 LOW_LIM = 33  # A1
 HIGH_LIM = 97  # C7
@@ -33,7 +34,7 @@ HIGH_LIM = 97  # C7
 NUM_NOTES = HIGH_LIM - LOW_LIM
 CROP = [LOW_LIM, HIGH_LIM]  # Crop plots
 
-STOP = 18  # Timestep at which interruption occurs
+STOP = 10  # Timestep at which interruption occurs
 
 # TensorFlow stuff
 physical_devices = tf.config.list_physical_devices('GPU')
@@ -82,19 +83,40 @@ def main():
     #     print("Selected threshold: %.2f" % best_thresh)
 
     # Select one file
-    FILE = 'bach-minuetto1.mid'
     tempo = 120
-    test_list = [P / 'midi_tests' / FILE]
 
+    # midi-test
+    FILE = 'bach_846cut2.mid'
+    test_list = [P / 'midi_tests' / FILE]
     test = dataset.Dataset(test_list, P / D,  fs=FS, bl=0, quant=Q)
     test.build_dataset("test", step=st, t_step=num_ts, steps=st, down=DOWN,
                        low_lim=LOW_LIM, high_lim=HIGH_LIM)
-    predictions = model.predict(x=test.dataset[0])
+
+    L = test.dataset[0].shape[0] - (test.dataset[0].shape[0] % BS)
+
+    x = test.dataset[0][:L, :, :]
+    y = test.dataset[1][:L, :]
+    test.dataset = (x, y)
+
+    # Chorales
+    # FILE = 'jsb-chorales-quarter.pkl'
+    # test_list = [P / 'data/JSB-Chorales-dataset' / FILE]
+    # test = dataset.Dataset(test_list, P / D,  fs=FS, bl=0, quant=Q)
+    # test.build_choral("test", step=st, t_step=num_ts, steps=st,
+    #                   low_lim=LOW_LIM, high_lim=HIGH_LIM)
+
+    # Predictions
+    # print(test.dataset[0][:15, :, :].shape)
+    predictions = model.predict(x=test.dataset[0], batch_size=BS)
     # predictions_bin = dataset.threshold(predictions, best_thresh)
     predictions_bin = dataset.ranked_threshold(predictions, steps=10,
                                                how_many=3)
 
     # Concatenate piano rolls.
+
+    # Sliding window predictions.
+    pred_w = copy.deepcopy(predictions_bin)
+
     # Snapshot predictions.
     pred_snap = copy.deepcopy(predictions_bin)
     L = int(predictions_bin.shape[1]/NUM_NOTES)
@@ -102,9 +124,6 @@ def main():
         pred_snap[STOP-num_ts+t,
                   :NUM_NOTES] = predictions_bin[STOP-num_ts,
                                                 NUM_NOTES*t:NUM_NOTES*(t+1)]
-
-    # Sliding window predictions.
-    pred_w = copy.deepcopy(predictions_bin)
 
     # Real piano roll of the song until interruption.
     real_start = pd.DataFrame(test.dataset[0][:STOP, 0, :])
@@ -128,16 +147,19 @@ def main():
                       low_lim=LOW_LIM, high_lim=HIGH_LIM)
     plt.title('Real')
     plt.ylim(CROP)
+    plt.xlim([STOP-10, STOP+10])
 
     pyplot_piano_roll(predicted, cmap="Oranges", db=[real.shape[0]-L-0.5],
                       br=2, low_lim=LOW_LIM, high_lim=HIGH_LIM)
     plt.title('Prediction (snapshot)')
     plt.ylim(CROP)
+    plt.xlim([STOP-10, STOP+10])
 
     pyplot_piano_roll(predicted_w, cmap="Purples", db=[real.shape[0]-L-0.5],
                       br=2, low_lim=LOW_LIM, high_lim=HIGH_LIM)
     plt.title('Prediction (sliding window)')
     plt.ylim(CROP)
+    plt.xlim([STOP-10, STOP+10])
 
     # Save piano roll
     f = copy.deepcopy(predicted)

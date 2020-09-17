@@ -6,6 +6,7 @@ import numpy as np
 import pypianoroll
 import random
 import copy
+import pickle
 
 
 def transpose(data):
@@ -71,6 +72,14 @@ def import_one(filename, beat_resolution, binarize=0):
     merged = pr.get_merged_pianoroll()
 
     return merged
+
+
+def import_one_choral(song):
+    """Convert choral into a piano_roll."""
+    pr = np.zeros((len(song), 128))
+    for c, t in enumerate(pr):
+        t[list(map(int, song[c]))] = 1
+    return pr
 
 
 def write_midi(data, filename, low_lim, high_lim, tempo=120.0):
@@ -158,6 +167,63 @@ class Dataset:
     #         # if limit == 1:
     #         #     break
 
+    def build_choral(self, name, step, t_step, steps,
+                     transpose=0, low_lim=21, high_lim=109):
+        """Build choral dataset."""
+        print("Building %s dataset (%d files)" % (name, len(self.midi_list)))
+
+        with open(self.midi_list[0], 'rb') as p:
+            data = pickle.load(p, encoding='latin1')
+
+        for song in data[name]:
+
+            prt = import_one_choral(song)
+
+            prt = prt[:, low_lim:high_lim]  # Crop piano roll
+
+            if self.baseline:
+                data = prt[:-t_step, :]
+                target = prt[step-1:-1, :]
+
+            else:
+                data = prt[:-t_step, :]
+                target = prt[step:, :]
+
+            if step > 0:
+                data_new = []
+                for c in range(len(data)-step+1):
+                    conc = np.array([data[x] for x in range(c, c+step)])
+#                     conc = downsample_one(conc, steps, down)
+                    data_new.append(conc)
+
+                data = np.array(data_new)
+
+            if t_step > 0:
+                target_new = []
+
+                if self.baseline:
+                    for c in range(len(target)-t_step+1):
+                        conc = np.array([target[c] for x in range(c,
+                                                                  c+t_step)])
+
+#                         conc = downsample_one(conc, steps, down)
+                        target_new.append(np.concatenate(conc, axis=None))
+
+                else:
+                    for c in range(len(target)-t_step+1):
+                        conc = np.array([target[x] for x in range(c,
+                                                                  c+t_step)])
+
+#                         conc = downsample_one(conc, steps, down)
+                        target_new.append(np.concatenate(conc, axis=None))
+
+                target = np.array(target_new)
+
+            self.data.append(data)
+            self.targets.append(target)
+
+        self.concatenate_all()
+
     def build_dataset(self, name, step, t_step, steps, down, transpose=0,
                       low_lim=21, high_lim=109):
         """Build a dataset."""
@@ -218,11 +284,11 @@ class Dataset:
 
     def concatenate_all(self):
         """Build dataset by concatenating all files."""
-        self.data = np.concatenate([x for x in self.data], axis=0)
-        self.targets = np.concatenate([x for x in self.targets], axis=0)
-        self.dataset = (self.data, self.targets)
-        del self.data
-        del self.targets
+        self.data2 = np.concatenate([x for x in self.data], axis=0)
+        self.targets2 = np.concatenate([x for x in self.targets], axis=0)
+        self.dataset = (self.data2, self.targets2)
+        del self.data2
+        del self.targets2
 
 
 def generate(datasets, bs=64, trans=0):
@@ -254,7 +320,105 @@ def generate(datasets, bs=64, trans=0):
             x = datasets[0][batch, :, :]
             y = datasets[1][batch, :]
 
-            yield (x, y)
+            yield (x, y, [None])
+
+
+def generate_on_batch(datasets, bs=64, trans=0):
+    """Yield dataset with random order and transposition."""
+    transpositions = list(range(-5, 7))
+
+    cnt = 0
+    while cnt == 0:
+        s = 0
+        b = 0
+        for x, y in zip(datasets[0], datasets[1]):
+            s += 1
+            # print("Song n. %d" % s)
+            next_ = 0
+            while True:
+                if next_ == 1:
+                    next_ = 0
+                    break
+
+                length = x.shape[0]
+                # print(length)
+                randomize = list(range(length))
+                randomize = [r*10 for r in randomize]
+                batch = randomize[b:b+bs]
+                # print("Using batch:", randomize[b:b+bs])
+                b += bs
+
+                if trans:
+                    trans = random.choice(transpositions)
+
+                    try:
+                        for i in range(x[batch, :, :].shape[1]):
+                            x[batch, i, :] = pitch_trans(x[batch, i, :], trans)
+
+                        y[batch, :] = pitch_trans(y[batch, :], trans)
+
+                    except IndexError:
+                        b = 0
+                        next_ = 1
+                        yield (np.array([[[-1]]]), np.array([[[-1]]]))
+
+                # if x[batch, :, :].shape[0] == bs:
+                #     print(x[batch, :, :].shape[0])
+                #     yield (x[batch, :, :], y[batch, :])
+
+                # else:
+                #     b = 0
+                #     next_ = 1
+                #     yield (np.array([[[-1]]]), np.array([[[-1]]]))
+
+                try:
+                    x[batch, :, :].shape[0] == bs
+                    # print(x[batch, :, :].shape[0])
+                    yield (x[batch, :, :], y[batch, :])
+
+                except IndexError:
+                    b = 0
+                    next_ = 1
+                    yield (np.array([[[-1]]]), np.array([[[-1]]]))
+
+        cnt = 1
+        print("Dataset finished")
+
+
+def generate_stateful(datasets, bs=64, trans=0):
+    """Yield dataset with random order and transposition."""
+    length = datasets[0].shape[0]
+    randomize = list(range(length))
+    randomize = [r*1 for r in randomize]
+    transpositions = list(range(-5, 7))
+
+    b = 0
+    while True:
+        batch = randomize[b:b+bs]
+        b += bs
+
+        try:
+            shap = datasets[0][batch, :, :].shape[0]
+
+        except Exception:
+            shap = -1
+
+        if shap != bs:
+            break
+
+        if trans:
+            trans = random.choice(transpositions)
+            for i in range(datasets[0][batch, :, :].shape[1]):
+                datasets[0][batch, i, :] = pitch_trans(datasets[0][batch,
+                                                                   i, :],
+                                                       trans)
+            datasets[1][batch, :] = pitch_trans(datasets[1][batch, :],
+                                                trans)
+
+        x = datasets[0][batch, :, :]
+        y = datasets[1][batch, :]
+
+        yield (x, y, [None])
 
 
 def pitch_trans(data, value):
