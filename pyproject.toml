@@ -1,0 +1,24 @@
+[tool.poetry]
+name = "NMP"
+version = "0.1.0"
+description = ""
+authors = ["paolo-26 <paolo.1995@ymail.com>"]
+
+[tool.poetry.dependencies]
+python = "^3.8"
+mido = "^1.2.9"
+matplotlib = "^3.3.2"
+pypianoroll = "^0.5.3"
+tensorflow-gpu = "^2.3.0"
+pandas = "^1.1.2"
+keras = "^2.4.3"
+
+[tool.poetry.dev-dependencies]
+pytest = "^5.2"
+jupyter = "^1.0.0"
+flake8 = "^3.8.3"
+seaborn = "^0.11.0"
+
+[build-system]
+requires = ["poetry>=0.12"]
+build-backend = "poetry.masonry.api"
