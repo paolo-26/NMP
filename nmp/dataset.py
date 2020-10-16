@@ -55,12 +55,13 @@ def pad_piano_roll(pr, low_lim=21, high_lim=109):
 
 
 def pyplot_piano_roll(pr, cmap="Blues", br=None, db=None, low_lim=21,
-                      high_lim=109):
+                      high_lim=109, ax=None):
     """Plot piano roll representation."""
     pr = pad_piano_roll(pr, low_lim, high_lim)
     pr = pypianoroll.Track(pianoroll=pr)
-    return pypianoroll.plot_track(pr, cmap=cmap,
-                                  beat_resolution=br, downbeats=db)
+    fig, ax = pypianoroll.plot_track(pr, cmap=cmap,
+                                     beat_resolution=br, downbeats=db)
+    return fig, ax
 
 
 def import_one(filename, beat_resolution, binarize=0):
@@ -651,29 +652,48 @@ def fill_gap_rnn(pr, model, position, size=1, num_notes=64, baseline=0,
 
     Recurrent model is used.
     """
-    start = position % 12
+    start = position - 120
     end = position
 
     past = downsample_roll(pr[start:end, :], 0, 12)
-    batch_size = past.shape[0]
-    if batch_size > 50:
-        batch_size = 50
+    generated = []
 
-    past = tf.data.Dataset.from_tensor_slices(past)
-    past = past.batch(batch_size, drop_remainder=True)
+    input_batch = tf.expand_dims(past, 0)
+    model.reset_states()
 
-    past = past.map(split_input_target)
-    past = past.batch(1, drop_remainder=True)
-
-    for input_batch, label_batch in past.take(-1):
+    for i in range(size):
         predictions = model(tf.cast(input_batch, tf.float32))
         pred = np.array(tf.squeeze(predictions, 0))
         predictions_bin = ranked_threshold(pred, steps=1, how_many=how_many)
 
-    upsampled = copy.deepcopy(predictions_bin)
+        generated.append(np.array(predictions_bin[-1]))
+        input_batch = tf.expand_dims([predictions_bin[-1]], 0)
+
+    upsampled = copy.deepcopy(generated)
     upsampled = upsample_roll(upsampled, 10, 12)
 
     filled = copy.deepcopy(pr)
-    filled[end: end+12*size] = upsampled[-12:]
+    filled[end: end+12*size] = upsampled
+
+    return filled
+
+
+def fill_gap_hold(pr, position, size=10, num_notes=64):
+    """Fill holes in a song with predictions.
+
+    Feedforward model is used.
+    """
+    start = position - 120
+    end = position
+
+    past = downsample_roll(pr[start:end, :], 10, 12)
+    past = np.array([past])
+    select, noteset = get_indexes(past[0])
+    base = hold_baseline(10, num_notes, select[-1])
+    base = np.array(base)
+    upsampled = upsample_roll(base, 10, 12)
+
+    filled = copy.deepcopy(pr)
+    filled[end: end+12*size] = upsampled[:12*size]
 
     return filled
