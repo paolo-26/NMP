@@ -697,3 +697,37 @@ def fill_gap_hold(pr, position, size=10, num_notes=64):
     filled[end: end+12*size] = upsampled[:12*size]
 
     return filled
+
+
+def predict_rnn(pr, model, size=10, num_notes=64, how_many=5):
+    """Fill holes in a song with predictions.
+
+    Recurrent model is used.
+    """
+    # start = position - 120
+    # end = position
+
+    # past = downsample_roll(pr[start:end, :], 0, 12)
+    generated = []
+    generated_cont = []
+
+    input_batch = tf.expand_dims(pr, 0)
+    model.reset_states()
+
+    for i in range(size):
+        predictions = model(tf.cast(input_batch, tf.float32))
+        pred = np.array(tf.squeeze(predictions, 0))
+
+        generated_cont.append(np.array(pred[-1]))
+        predictions_bin = ranked_threshold(pred, steps=1, how_many=how_many)
+
+        generated.append(np.array(predictions_bin[-1]))
+        input_batch = tf.expand_dims([predictions_bin[-1]], 0)
+
+    # upsampled = copy.deepcopy(generated)
+    # upsampled = upsample_roll(upsampled, 10, 12)
+
+    # filled = copy.deepcopy(pr)
+    # filled[end: end+12*size] = upsampled
+
+    return np.array(generated_cont)

@@ -6,10 +6,11 @@ from tensorflow.keras.layers import Dense
 from tensorflow.keras.layers import Flatten
 # from tensorflow.keras.layers import Dropout
 from tensorflow.keras.layers import SimpleRNN
-# from tensorflow.keras.layers import GRU
+from tensorflow.keras.layers import GRU
 from tensorflow.keras.layers import Input
-# from tensorflow.keras.layers import LSTM
+from tensorflow.keras.layers import LSTM
 import tensorflow as tf
+import keras.backend as K
 
 # Allow memory growth.
 physical_devices = tf.config.list_physical_devices('GPU')
@@ -55,11 +56,12 @@ def build_gru_model(num_notes, batch_size):
     model = Sequential(
         [Input(batch_input_shape=[batch_size, None, num_notes]),
 
-         SimpleRNN(units=32,
-                   return_sequences=True,
-                   stateful=True,
-                   recurrent_initializer='glorot_uniform'),
-
+         LSTM(units=32,
+             return_sequences=True,
+             stateful=True),
+         LSTM(units=16,
+             return_sequences=True,
+             stateful=True),
          Dense(units=num_notes,
                activation='sigmoid',
                name='Output')
@@ -74,3 +76,16 @@ def compile_model(model, loss, optimizer, metrics):
     model.compile(loss=loss,
                   optimizer=optimizer,
                   metrics=metrics)
+
+
+def f1(y_true, y_pred):
+    """Compute F1-score metric.
+    Taken from old keras source code.
+    """
+    true_positives = K.sum(K.round(K.clip(y_true * y_pred, 0, 1)))
+    possible_positives = K.sum(K.round(K.clip(y_true, 0, 1)))
+    predicted_positives = K.sum(K.round(K.clip(y_pred, 0, 1)))
+    precision = true_positives / (predicted_positives + K.epsilon())
+    recall = true_positives / (possible_positives + K.epsilon())
+    f1_val = 2*(precision*recall)/(precision+recall+K.epsilon())
+    return f1_val
