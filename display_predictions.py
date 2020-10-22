@@ -17,16 +17,16 @@ import matplotlib.pyplot as plt
 P = Path(os.path.abspath(''))  # Compatible with Jupyter Notebook
 
 PLOTS = P / 'plots'  # Plots path
-BS = 32
+BS = 64
 FS = 24  # Sampling frequency. 10 Hz = 100 ms
 Q = 0  # Quantize?
 st = 10  # Past timesteps
 num_ts = 10  # Predicted timesteps
 DOWN = 12  # Downsampling factor
-D = "data/piano-midi"  # Dataset (synth or data)
+D = "data/midi_tests"  # Dataset (synth or data)
 # MODEL = 'model-LSTM-24-10-12'
 # MODEL = 'chorales-ff-2'
-MODEL = 'rr-102x1.h5'
+MODEL = 'ff-z2-de'
 
 LOW_LIM = 33  # A1
 HIGH_LIM = 97  # C7
@@ -34,7 +34,7 @@ HIGH_LIM = 97  # C7
 NUM_NOTES = HIGH_LIM - LOW_LIM
 CROP = [LOW_LIM, HIGH_LIM]  # Crop plots
 
-STOP = 10  # Timestep at which interruption occurs
+STOP = 18  # Timestep at which interruption occurs
 
 # TensorFlow stuff
 physical_devices = tf.config.list_physical_devices('GPU')
@@ -42,61 +42,25 @@ tf.config.experimental.set_memory_growth(physical_devices[0], True)
 
 
 def main():
-    # # Load midi files
-    # midi_list = [x for x in os.listdir(P / D) if x.endswith('.mid')]
-    # test_list = midi_list[213:235]
-    # test = dataset.Dataset(test_list, P / D,  fs=FS, bl=0, quant=Q)
-    # test.build_dataset("test", step=st, t_step=num_ts, steps=st, down=DOWN,
-    #                    low_lim=LOW_LIM, high_lim=HIGH_LIM)
-
     # Load model.
     model = load_model(filepath=str(P / 'models' / MODEL),
                        custom_objects=None, compile=True)
     model.summary()
 
-    # # Make predictions.
-    # predictions = model.predict(x=test.dataset[0])
-    # pred_auc = ev_metrics.compute_auc(test.dataset[1], predictions, NUM_NOTES)
-    # print(np.nanmean(pred_auc))
-
-    # print("Computing best threshold...")
-    # # best_thresh = None
-    # best_thresh = 0.14
-    # if not best_thresh:
-    #     (best_thresh,
-    #      best_res,
-    #      thresh_range,
-    #      results) = ev_metrics.compute_best_thresh(test.dataset[1],
-    #                                                predictions,
-    #                                                NUM_NOTES)
-    #     print("Best threshold = %.2f - F1-score: %.4f" % (best_thresh,
-    #                                                       best_res))
-    #     plt.figure(figsize=(6, 4), constrained_layout=True)
-    #     plt.plot(thresh_range, results, label="Predictions", lw=2)
-    #     plt.xlabel("Threshold")
-    #     plt.ylabel("F1-score")
-    #     plt.title("F1-score vs Threshold")
-    #     plt.ylim([0, 1])
-    #     plt.legend()
-
-    # else:
-    #     print("Selected threshold: %.2f" % best_thresh)
-
-    # Select one file
-    tempo = 120
+    tempo = 130
 
     # midi-test
-    FILE = 'bach_846cut2.mid'
+    FILE = 'bach-minuetto2.mid'
     test_list = [P / 'midi_tests' / FILE]
     test = dataset.Dataset(test_list, P / D,  fs=FS, bl=0, quant=Q)
     test.build_dataset("test", step=st, t_step=num_ts, steps=st, down=DOWN,
                        low_lim=LOW_LIM, high_lim=HIGH_LIM)
 
-    L = test.dataset[0].shape[0] - (test.dataset[0].shape[0] % BS)
-
-    x = test.dataset[0][:L, :, :]
-    y = test.dataset[1][:L, :]
-    test.dataset = (x, y)
+    # Truncate dataset.
+    # L = test.dataset[0].shape[0] - (test.dataset[0].shape[0] % BS)
+    # x = test.dataset[0][:L, :, :]
+    # y = test.dataset[1][:L, :]
+    # test.dataset = (x, y)
 
     # Chorales
     # FILE = 'jsb-chorales-quarter.pkl'
@@ -107,7 +71,7 @@ def main():
 
     # Predictions
     # print(test.dataset[0][:15, :, :].shape)
-    predictions = model.predict(x=test.dataset[0], batch_size=BS)
+    predictions = model.predict(x=test.dataset[0])  # , batch_size=BS)
     # predictions_bin = dataset.threshold(predictions, best_thresh)
     predictions_bin = dataset.ranked_threshold(predictions, steps=10,
                                                how_many=3)
@@ -142,6 +106,20 @@ def main():
     predicted = pd.concat([real_start, pred_end]).values  # Snapshot
     predicted_w = pd.concat([real_start, pred_end_w]).values  # Sliding window
 
+    # Random baseline
+    random_baseline = dataset.random_baseline(10, NUM_NOTES)
+    random_baseline = pd.concat([real_start, random_baseline]).values
+
+    # Semi-random baseline
+    _, noteset = dataset.get_indexes(real_start)
+    sr_baseline = dataset.random_baseline(10, NUM_NOTES, noteset)
+    sr_baseline = pd.concat([real_start, sr_baseline]).values
+
+    # Hold baseline
+    _, noteset = dataset.get_indexes(real_start.tail(1))
+    hold_baseline = dataset.hold_baseline(10, NUM_NOTES, noteset)
+    hold_baseline = pd.concat([real_start, hold_baseline]).values
+
     plt.rcParams["figure.figsize"] = (8, 4)
     pyplot_piano_roll(real, cmap="Greens", db=[real.shape[0]-L-0.5], br=2,
                       low_lim=LOW_LIM, high_lim=HIGH_LIM)
@@ -161,14 +139,38 @@ def main():
     plt.ylim(CROP)
     plt.xlim([STOP-10, STOP+10])
 
-    # Save piano roll
-    f = copy.deepcopy(predicted)
-    write_midi(f, str(P / 'audio_output' / 'snap.mid'), LOW_LIM, HIGH_LIM,
-               tempo=tempo)
-    f2 = copy.deepcopy(predicted_w)
-    write_midi(f2, str(P / 'audio_output' / 'slide.mid'), LOW_LIM, HIGH_LIM,
-               tempo=tempo)
+    pyplot_piano_roll(random_baseline, cmap="Purples",
+                      db=[real.shape[0]-L-0.5],
+                      br=2, low_lim=LOW_LIM, high_lim=HIGH_LIM)
+    plt.title('Random baseline')
+    plt.ylim(CROP)
+    plt.xlim([STOP-10, STOP+10])
 
+    pyplot_piano_roll(sr_baseline, cmap="Purples", db=[real.shape[0]-L-0.5],
+                      br=2, low_lim=LOW_LIM, high_lim=HIGH_LIM)
+    plt.title('Semi-random baseline')
+    plt.ylim(CROP)
+    plt.xlim([STOP-10, STOP+10])
+
+    # Save piano roll
+    # f0 = copy.deepcopy(real)
+    # write_midi(f0, str(P / 'audio_output' / 'real.mid'),
+    #            LOW_LIM, HIGH_LIM, tempo=tempo)
+    f1 = copy.deepcopy(predicted)
+    write_midi(f1, str(P / 'audio_output' / 'snapshot-window.mid'),
+               LOW_LIM, HIGH_LIM, tempo=tempo)
+    f2 = copy.deepcopy(predicted_w)
+    write_midi(f2, str(P / 'audio_output' / 'sliding-window.mid'),
+               LOW_LIM, HIGH_LIM, tempo=tempo)
+    f3 = copy.deepcopy(random_baseline)
+    write_midi(f3, str(P / 'audio_output' / 'random.mid'),
+               LOW_LIM, HIGH_LIM, tempo=tempo)
+    f4 = copy.deepcopy(sr_baseline)
+    write_midi(f4, str(P / 'audio_output' / 'semi-random.mid'),
+               LOW_LIM, HIGH_LIM, tempo=tempo)
+    f5 = copy.deepcopy(hold_baseline)
+    write_midi(f5, str(P / 'audio_output' / 'hold.mid'),
+               LOW_LIM, HIGH_LIM, tempo=tempo)
     plt.show()
 
 
