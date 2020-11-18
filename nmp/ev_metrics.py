@@ -104,7 +104,7 @@ def dissonance_perception(x, y):
 
     It still does not work very well.
     """
-    scores = {
+    stability = {
         0: 0.075,  # Unison
         12: 0.023,  # Octave
         7: 0.022,  # Fifth
@@ -122,7 +122,6 @@ def dissonance_perception(x, y):
     x, _ = get_indexes(x)
     y, _ = get_indexes(y)
 
-    # values = [b[0]-a[0] for a, b in zip(x, y)]
     values = []
     for t, a in enumerate(x):
         # print("Timestep %d" % t)
@@ -151,7 +150,7 @@ def dissonance_perception(x, y):
                     values[c][i] -= 12
                     finished = 0
 
-    score = [scores[v] for val in values for v in val]
+    score = [stability[v] for val in values for v in val]
     score = np.sum(score) / len(score) / 0.075
 
     return score
