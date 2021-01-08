@@ -4,7 +4,7 @@
 import pandas as pd
 from sklearn.metrics import roc_auc_score, f1_score
 from math import nan
-from nmp.dataset import threshold, get_indexes
+from nmp.dataset import get_indexes
 import numpy as np
 
 
@@ -78,25 +78,6 @@ def compute_f1(x, y, num_notes):
     f1_df = pd.DataFrame(f1s).transpose()
     f1_df.index = list(range(num_notes, 0, -1))
     return f1_df
-
-
-def compute_best_thresh(x, y, num_notes):
-    """Compute best threshold."""
-
-    best_thresh = None
-    best_res = 0
-    results = []
-    thresh_range = np.arange(0.02, 0.3, 0.01)
-    for thresh in thresh_range:
-        pred_f1 = compute_f1(x, threshold(y, thresh), num_notes)
-        res = np.nanmean(pred_f1)
-        results.append(res)
-        print("%.2f - F1: %.4f" % (thresh, res))
-        if res > best_res:
-            best_thresh = thresh
-            best_res = res
-
-    return (best_thresh, best_res, thresh_range, results)
 
 
 def dissonance_perception(x, y):

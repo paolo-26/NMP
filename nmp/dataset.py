@@ -6,7 +6,6 @@ import numpy as np
 import pypianoroll
 import random
 import copy
-import pickle
 import tensorflow as tf
 
 
@@ -169,63 +168,6 @@ class Dataset:
     #         # if limit == 1:
     #         #     break
 
-    def build_choral(self, name, step, t_step, steps,
-                     transpose=0, low_lim=21, high_lim=109):
-        """Build choral dataset."""
-        print("Building %s dataset (%d files)" % (name, len(self.midi_list)))
-
-        with open(self.midi_list[0], 'rb') as p:
-            data = pickle.load(p, encoding='latin1')
-
-        for song in data[name]:
-
-            prt = import_one_choral(song)
-
-            prt = prt[:, low_lim:high_lim]  # Crop piano roll
-
-            if self.baseline:
-                data = prt[:-t_step, :]
-                target = prt[step-1:-1, :]
-
-            else:
-                data = prt[:-t_step, :]
-                target = prt[step:, :]
-
-            if step > 0:
-                data_new = []
-                for c in range(len(data)-step+1):
-                    conc = np.array([data[x] for x in range(c, c+step)])
-#                     conc = downsample_one(conc, steps, down)
-                    data_new.append(conc)
-
-                data = np.array(data_new)
-
-            if t_step > 0:
-                target_new = []
-
-                if self.baseline:
-                    for c in range(len(target)-t_step+1):
-                        conc = np.array([target[c] for x in range(c,
-                                                                  c+t_step)])
-
-#                         conc = downsample_one(conc, steps, down)
-                        target_new.append(np.concatenate(conc, axis=None))
-
-                else:
-                    for c in range(len(target)-t_step+1):
-                        conc = np.array([target[x] for x in range(c,
-                                                                  c+t_step)])
-
-#                         conc = downsample_one(conc, steps, down)
-                        target_new.append(np.concatenate(conc, axis=None))
-
-                target = np.array(target_new)
-
-            self.data.append(data)
-            self.targets.append(target)
-
-        self.concatenate_all()
-
     def build_dataset(self, name, step, t_step, steps, down, transpose=0,
                       low_lim=21, high_lim=109):
         """Build a dataset."""
@@ -298,14 +240,31 @@ class Dataset:
 
             if self.baseline:
                 data = prt[:-1, :]
-                target = prt[:-1, :]
+                # target = []
+                # target = prt[:-1, :]
 
+            # Legacy.
+            # else:
+            #     data = prt[:-1, :]
+            #     target = []
+            #     # target = prt[1:, :]
+
+            # 10 to predict 10.
             else:
-                data = prt[:-1, :]
-                target = prt[1:, :]
+                data = prt
+                # target = []
+
+            data_new = []
+            for c in range(len(data) - 19):
+                conc = np.array([data[x] for x in range(c, c+20)])
+                conc = np.concatenate([x for x in conc], axis=0)
+                data_new.append(conc)
+
+            data = np.array(data_new)
 
             self.data.append(data)
-            self.targets.append(target)
+            self.targets.append(data)
+            # self.targets.append(target)
 
         self.concatenate_all()
 
@@ -350,6 +309,11 @@ def hold_baseline(length, num_notes, select):
 
 
 def get_indexes(pr):
+    """Return indexes from piano roll structure.
+
+    select: all notes played in the piano roll for every timestep
+    noteset: set of notes played in the piano roll
+    """
     pr = pd.DataFrame(pr)
     serie = pr.apply(lambda row: row[row == 1].index, axis=1)
     select = []
@@ -549,32 +513,21 @@ def pitch_trans(data, value):
     return np.array(data.values)
 
 
-# def downsample_one(inst, steps, down):
-#     """Downsample timesteps."""
-#     cnt = 0
-#     array = []
-
-#     for i in range(int(steps/down)):
-#         vect = inst[cnt:cnt+down, :].any(axis=0)
-#         array.append(vect)
-#         cnt += down
-
-#     return np.array(array)
-
 def downsample_roll(pr, steps, down):
     """Downsample piano roll.
 
     This is done in order to facilitate predictions.
     """
-    cnt = 0
-    array = []
-    for i in range(int(len(pr)/down)):
-        array.append(pr[cnt:cnt+down, :].any(axis=0))
-        cnt += down
-    if len(pr[cnt:]) > 0:
-        array.append(pr[cnt:].any(axis=0))  # Last
+    if down > 1:
+        cnt = 0
+        array = []
+        for i in range(int(len(pr)/down)):
+            array.append(pr[cnt:cnt+down, :].any(axis=0))
+            cnt += down
+        if len(pr[cnt:]) > 0:
+            array.append(pr[cnt:].any(axis=0))  # Last
 
-    return np.array(array)
+        return np.array(array)
 
 
 def upsample_roll(pr, steps, up):
@@ -598,13 +551,6 @@ def slice_dataset(datasets):
     x = tf.data.Dataset.from_tensor_slices(x)
     y = tf.data.Dataset.from_tensor_slices(y)
     return (x, y)
-
-# def build_baseline(data, target):
-#     for i in range(data.shape[0]):
-#         for n in range(data.shape[1]):
-#             target[i, 88*n:88*(n+1)] = data[i, -1, :]
-
-#     return target
 
 
 def fill_gap(pr, model, position, size=10, num_notes=64, baseline=0,
@@ -699,15 +645,12 @@ def fill_gap_hold(pr, position, size=10, num_notes=64):
     return filled
 
 
-def predict_rnn(pr, model, size=10, num_notes=64, how_many=5):
+def predict_rnn2(pr, model, size=10, num_notes=64, how_many=5):
     """Fill holes in a song with predictions.
 
     Recurrent model is used.
+    Predictions are re-used for next predictions (biased).
     """
-    # start = position - 120
-    # end = position
-
-    # past = downsample_roll(pr[start:end, :], 0, 12)
     generated = []
     generated_cont = []
 
@@ -731,3 +674,59 @@ def predict_rnn(pr, model, size=10, num_notes=64, how_many=5):
     # filled[end: end+12*size] = upsampled
 
     return np.array(generated_cont)
+
+
+def predict_rnn(pr, model, size=10, num_notes=64, how_many=5):
+    """Fill holes in a song with predictions.
+
+    Recurrent model is used.
+    """
+    generated = []
+    generated_cont = []
+
+    input_batch = tf.expand_dims(pr, 0)
+    model.reset_states()
+
+    predictions = model(tf.cast(input_batch, tf.float32))
+    pred = np.array(tf.squeeze(predictions, 0))
+
+    generated_cont.append(np.array(pred[-1]))
+    predictions_bin = ranked_threshold(pred, steps=1, how_many=how_many)
+
+    generated.append(np.array(predictions_bin[-1]))
+    # input_batch = tf.expand_dims([predictions_bin[-1]], 0)
+
+    # upsampled = copy.deepcopy(generated)
+    # upsampled = upsample_roll(upsampled, 10, 12)
+
+    # filled = copy.deepcopy(pr)
+    # filled[end: end+12*size] = upsampled
+
+    return np.array(generated_cont)
+
+
+def fill_gap_rnn_final(pr, model, position, size=1, baseline=0,
+                       how_many=2):
+    """Fill holes in a song with predictions.
+
+    Recurrent model is used. Long vector of notes predicted at once.
+    """
+    start = position - 120
+    end = position
+
+    past = downsample_roll(pr[start:end, :], 0, 12)
+    generated = []
+    past = np.reshape(past, (1, 640))
+    input_batch = tf.expand_dims(past, 0)
+    model.reset_states()
+    predictions = model(tf.cast(input_batch, tf.float32))
+    pred = np.array(tf.squeeze(predictions, 0))
+    predictions_bin = ranked_threshold(pred, steps=size, how_many=how_many)
+    generated.append(np.array(predictions_bin[-1]))
+    generated = np.reshape(generated, (10, 64))
+    upsampled = copy.deepcopy(generated)
+    upsampled = upsample_roll(upsampled, 10, 12)
+    filled = copy.deepcopy(pr)
+    filled[end: end+12*size] = upsampled
+
+    return filled
