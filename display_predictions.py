@@ -62,13 +62,6 @@ def main():
     # y = test.dataset[1][:L, :]
     # test.dataset = (x, y)
 
-    # Chorales
-    # FILE = 'jsb-chorales-quarter.pkl'
-    # test_list = [P / 'data/JSB-Chorales-dataset' / FILE]
-    # test = dataset.Dataset(test_list, P / D,  fs=FS, bl=0, quant=Q)
-    # test.build_choral("test", step=st, t_step=num_ts, steps=st,
-    #                   low_lim=LOW_LIM, high_lim=HIGH_LIM)
-
     # Predictions
     # print(test.dataset[0][:15, :, :].shape)
     predictions = model.predict(x=test.dataset[0])  # , batch_size=BS)
